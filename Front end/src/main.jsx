@@ -24,11 +24,11 @@ function App() {
   const [personality, setPersonality] = React.useState(null);
 
   React.useEffect(() => {
-    fetch('http://localhost:3001/api/personality')
+    fetch('https://vein-flashy-dog.abasthan.app/api/personality')
       .then((response) => response.ok ? response.json() : null)
       .then(setPersonality)
       .catch(() => setPersonality(null));
-    fetch('http://localhost:3001/api/memories')
+    fetch('https://vein-flashy-dog.abasthan.app/api/memories')
       .then((response) => response.ok ? response.json() : [])
       .then(setMemories)
       .catch(() => setMemories([]));
@@ -43,7 +43,7 @@ function App() {
     setMessages((current) => [...current, { role: 'user', content }]);
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/chat', {
+      const response = await fetch('https://vein-flashy-dog.abasthan.app/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: content, history: messages })
       });

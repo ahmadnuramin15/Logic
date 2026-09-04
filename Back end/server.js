@@ -181,4 +181,8 @@ app.post('/api/chat', async (request, response) => {
   updateProgress();
   return response.json({ reply, mode, emotion, progression: getProgression(), quests: getQuests(), skills: getSkills() });
 });
-app.listen(port, () => console.log(`Logic backend listening on http://localhost:${port}`));
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Logic backend listening on port ${PORT}`);
+});
