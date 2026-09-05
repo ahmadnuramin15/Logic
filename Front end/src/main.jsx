@@ -75,9 +75,9 @@ function App() {
     setMessages((current) => [...current, { role: 'user', content }]);
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/chat`, {
+      const response = await fetch('https://vein-flashy-dog.abasthan.app/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, history: requestHistory })
+        body: JSON.stringify({ message: content, history: messages })
       });
       if (!response.ok) {
         const failure = await response.json().catch(() => null);
