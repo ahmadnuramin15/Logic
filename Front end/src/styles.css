@@ -26,4 +26,97 @@ button, textarea { font: inherit; }
 .message-row { display: flex; gap: 13px; max-width: 720px; margin-top: 29px; }.message-row.user { margin-left: auto; flex-direction: row-reverse; }.avatar { flex: 0 0 34px; display: grid; place-items: center; width: 34px; height: 34px; overflow: hidden; color: #131a31; background: #b59eec; clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); font: 700 14px 'Rajdhani'; }.avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 22%; }.user .avatar { color: #172033; background: #f2ce76; }.message-bubble { min-width: 0; padding: 0 4px; }.message-label { display: block; margin-bottom: 6px; color: #8b96b9; }.message-label small { margin-left: 8px; color: #586486; font: 400 10px 'DM Sans'; letter-spacing: 0; }.message-bubble p, .message-bubble li { color: #e9e5f4; line-height: 1.65; font-size: 14px; }.message-bubble p { margin: 0 0 9px; }.message-bubble p:last-child { margin-bottom: 0; }.message-bubble ul, .message-bubble ol { margin: 6px 0 10px; padding-left: 22px; }.message-bubble li { margin: 3px 0; }.message-bubble h1, .message-bubble h2, .message-bubble h3 { margin: 8px 0 6px; color: #f6d987; font: 600 17px 'Rajdhani'; }.message-bubble a { color: #c5b1ff; }.message-bubble code { padding: 2px 5px; color: #f6d987; background: #1d2542; font-size: 12px; }.message-bubble pre { max-width: 100%; margin: 10px 0; padding: 12px; overflow-x: auto; border: 1px solid #303b61; background: #0d1326; }.message-bubble pre code { padding: 0; color: #ddd7f0; background: transparent; }.user .message-bubble { text-align: right; }
 .typing { display: flex; gap: 5px; padding-top: 10px; }.typing span { width: 5px; height: 5px; background: #b19bed; border-radius: 50%; animation: pulse 1s infinite alternate; }.typing span:nth-child(2) { animation-delay: .2s; }.typing span:nth-child(3) { animation-delay: .4s; } @keyframes pulse { to { opacity: .25; transform: translateY(-3px); } }
 .composer { padding: 19px 8% 25px; border-top: 1px solid #252e4d; background: #10162a; }.composer-inner { display: flex; align-items: flex-end; gap: 10px; padding: 12px 12px 12px 14px; border: 1px solid #3a466b; background: #151d35; }.composer-rune { padding: 3px 3px 7px; color: #f6d987; font-size: 16px; }.composer textarea { flex: 1; resize: none; min-height: 25px; max-height: 130px; border: 0; outline: 0; color: #f4efff; background: transparent; }.composer textarea::placeholder { color: #707da5; }.composer button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #b69bee; color: #151b31; background: #b69bee; cursor: pointer; }.composer button:disabled { opacity: .35; cursor: not-allowed; }.composer-note, .error-note { margin-top: 8px; color: #657196; font: 10px 'Rajdhani'; letter-spacing: .05em; }.composer-note span { margin: 0 5px; color: #b69bee; }.error-note { color: #f08e9a; }
-@media (max-width: 760px) { .app-shell { display: block; }.sidebar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; gap: 6px; min-height: 103px; padding: 14px 18px 10px; border-right: 0; border-bottom: 1px solid #293151; }.brand { grid-column: 1 / -1; }.hero-avatar, .character-name, .character-title, .level-row, .xp-track, .stat-grid, .new-chat, .side-label, .sidebar-bottom { display: none; }.side-item { display: flex; justify-content: center; min-width: 0; margin: 0; padding: 8px 2px; border-left: 0; overflow: hidden; white-space: nowrap; font-size: 9px; }.side-item.active { border-left: 0; border-bottom: 2px solid #f6d987; }.side-item svg { width: 14px; flex-shrink: 0; }.conversation { min-height: calc(100vh - 103px); }.topbar { padding: 29px 20px 22px; }.topbar h1 { font-size: 29px; }.online-status { font-size: 0; }.message-list, .composer { padding-left: 20px; padding-right: 20px; }.quest-banner { align-items: flex-start; }.welcome, .quest-banner { padding: 14px; } }
+@media (max-width: 760px) {
+  body { overflow-x: hidden; }
+  .app-shell { display: flex; flex-direction: column; }
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 8px;
+    min-height: auto;
+    padding: 14px 14px 10px;
+    border-right: 0;
+    border-bottom: 1px solid #293151;
+    background: rgba(17, 23, 43, 0.96);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand { grid-column: 1 / -1; justify-content: center; }
+  .hero-avatar, .character-name, .character-title, .level-row, .xp-track, .stat-grid, .new-chat, .side-label, .sidebar-bottom { display: none; }
+  .side-item {
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+    margin: 0;
+    padding: 10px 6px;
+    border-left: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 9px;
+    letter-spacing: .04em;
+  }
+  .side-item.active {
+    border-left: 0;
+    border-bottom: 2px solid #f6d987;
+    background: rgba(26, 34, 64, 0.9);
+  }
+  .side-item svg { width: 14px; flex-shrink: 0; }
+  .conversation { width: 100%; min-height: auto; }
+  .topbar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 24px 16px 18px;
+  }
+  .topbar h1 { font-size: 30px; line-height: 1.05; }
+  .online-status { padding-top: 0; }
+  .message-list, .composer { padding-left: 16px; padding-right: 16px; }
+  .welcome, .quest-banner, .content-panel {
+    max-width: none;
+    width: 100%;
+    border-radius: 16px;
+  }
+  .welcome {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .quest-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .quest-count {
+    text-align: left;
+    font-size: 18px;
+  }
+  .content-panel {
+    margin: 18px 16px 0;
+    padding: 18px 16px;
+  }
+  .message-row {
+    max-width: 100%;
+    margin-top: 18px;
+  }
+  .message-bubble { max-width: calc(100% - 48px); }
+  .message-bubble p, .message-bubble li { font-size: 14px; }
+  .composer {
+    padding-top: 14px;
+    padding-bottom: 20px;
+  }
+  .composer-inner {
+    align-items: center;
+    padding: 10px 10px 10px 12px;
+    border-radius: 14px;
+  }
+  .composer textarea { font-size: 15px; }
+  .composer-note { font-size: 9px; }
+}
