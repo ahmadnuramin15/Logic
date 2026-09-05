@@ -27,7 +27,7 @@ function App() {
   const [progression, setProgression] = React.useState({ xp: 0, level: 1, rank: 'Pemula', currentLevelXp: 0, nextLevelXp: 100, xpPerMessage: 10, stats: { totalMessages: 0 } });
   const [quests, setQuests] = React.useState([]);
 
-  const API_BASE = 'http://localhost:3001';
+  const API_BASE = 'https://vein-flashy-dog.abasthan.app';
 
   const activeQuest = React.useMemo(
     () => quests.find((quest) => !quest.completed) ?? quests[0] ?? null,
