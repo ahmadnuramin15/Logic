@@ -68,14 +68,16 @@ function App() {
     event.preventDefault();
     const content = input.trim();
     if (!content || loading) return;
+
+    const requestHistory = [...messages].slice(-12);
     setInput('');
     setError('');
     setMessages((current) => [...current, { role: 'user', content }]);
     setLoading(true);
     try {
-      const response = await fetch('https://vein-flashy-dog.abasthan.app/api/chat', {
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, history: messages })
+        body: JSON.stringify({ message: content, history: requestHistory })
       });
       if (!response.ok) {
         const failure = await response.json().catch(() => null);
@@ -112,7 +114,7 @@ function App() {
       </aside>
 
       <section className="conversation">
-        <header className="topbar"><div><span className="eyebrow">CHAPTER 01 / {activeView === 'chat' ? 'RUANG UTAMA' : activeView === 'memory' ? 'CODEX MEMORY' : 'ACHIEVEMENTS'}</span><h1>{activeView === 'chat' ? 'Teman berpikir yang hadir.' : activeView === 'memory' ? 'Catatan yang kamu pilih untuk diingat.' : 'Jejak perjalananmu.'}</h1><p className="topbar-subtitle">{activeView === 'chat' ? (personality ? `${personality.name} · fakta di atas drama.` : 'Satu pikiran pada satu waktu.') : activeView === 'memory' ? 'Memory hanya tersimpan atas izinmu.' : 'Setiap langkah kecil tetap berarti.'}</p></div><div className="online-status"><span /> SERVER ONLINE</div></header>
+        <header className="topbar"><div><span className="eyebrow">CHAPTER 01 / {activeView === 'chat' ? 'RUANG UTAMA' : activeView === 'memory' ? 'CODEX MEMORY' : 'ACHIEVEMENTS'}</span><h1>{activeView === 'chat' ? 'Teman berpikir yang hadir.' : activeView === 'memory' ? 'Catatan yang kamu pilih untuk diingat.' : 'Jejak perjalananmu.'}</h1><p className="topbar-subtitle">{activeView === 'chat' ? (personality ? `${personality.name} · fakta di atas drama.` : 'Satu pikiran pada satu waktu.') : activeView === 'memory' ? 'Memory hanya tersimpan atas izinmu.' : 'Setiap langkah kecil tetap berarti.'}</p><div className="level-pill">LEVEL {progression.level || 1} · {progression.rank || 'Pemula'}</div></div><div className="online-status"><span /> SERVER ONLINE</div></header>
         {activeView === 'chat' ? <div className="message-list">
           <div className="welcome"><div className="welcome-icon"><BrainMark size={21} /></div><div><span className="quest-label">NEW ADVENTURE</span><strong>Selamat datang di Logic</strong><p>Mulai dari satu kalimat. Kita ubah menjadi langkah yang terasa mungkin.</p></div></div>
           <div className="quest-banner"><div><span className="quest-label">ACTIVE QUEST</span><strong>{activeQuest?.title || 'Mulai tiga percakapan'}</strong><p>{activeQuest?.description || 'Buka ruang pikirmu lewat tiga pesan.'}</p></div><div className="quest-count">{String(activeQuest?.progress || 0).padStart(2, '0')}<small> / {String(activeQuest?.goal || 3).padStart(2, '0')}</small><span>{activeQuest?.completed ? 'COMPLETED' : 'IN PROGRESS'}</span></div></div>
