@@ -362,6 +362,47 @@ app.post('/api/image-edit', async (request, response) => {
     return response.status(502).json({ error: 'Layanan edit foto sedang tidak tersedia.' });
   }
 });
+app.post('/api/image-question', async (request, response) => {
+  const image = typeof request.body?.image === 'string' ? request.body.image : '';
+  const question = typeof request.body?.question === 'string' ? request.body.question.trim() : '';
+  const imageMatch = image.match(/^data:(image\/(?:png|jpeg|webp));base64,([a-zA-Z0-9+/=]+)$/);
+  if (!imageMatch || !question) return response.status(400).json({ error: 'Foto dan pertanyaan wajib diisi.' });
+  if (question.length > 1000) return response.status(400).json({ error: 'Pertanyaan maksimal 1000 karakter.' });
+  if (image.length > 10 * 1024 * 1024) return response.status(413).json({ error: 'Ukuran foto terlalu besar. Maksimal 10 MB.' });
+  if (!process.env.AI_VISION_API_KEY && !process.env.AI_API_KEY) return response.status(503).json({ error: 'Provider vision belum dikonfigurasi di backend.' });
+
+  try {
+    const providerResponse = await fetch(process.env.AI_VISION_API_URL || 'https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.AI_VISION_API_KEY || process.env.AI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: process.env.AI_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct',
+        temperature: 0.2,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: `Jawab pertanyaan tentang foto ini dalam Bahasa Indonesia secara ringkas dan faktual. Jangan menebak identitas, usia, lokasi, atau detail yang tidak terlihat jelas. Jika tidak yakin, katakan tidak yakin. Pertanyaan: ${question}` },
+            { type: 'image_url', image_url: { url: image } }
+          ]
+        }]
+      })
+    });
+    const data = await providerResponse.json().catch(() => null);
+    if (!providerResponse.ok) {
+      console.error('VISION PROVIDER ERROR:', providerResponse.status, data);
+      return response.status(502).json({ error: 'Provider vision gagal menganalisis foto.' });
+    }
+    const answer = data?.choices?.[0]?.message?.content;
+    if (typeof answer !== 'string' || !answer.trim()) return response.status(502).json({ error: 'Provider tidak mengembalikan jawaban.' });
+    return response.json({ answer: answer.trim() });
+  } catch (error) {
+    console.error('Image question request failed:', error.message);
+    return response.status(502).json({ error: 'Layanan tanya foto sedang tidak tersedia.' });
+  }
+});
 app.post('/api/chat', async (request, response) => {
   const deviceId = getDeviceId(request);
   ensureDeviceData(deviceId);

@@ -64,6 +64,9 @@ function App() {
   const [editedImage, setEditedImage] = React.useState('');
   const [editLoading, setEditLoading] = React.useState(false);
   const [editError, setEditError] = React.useState('');
+  const [photoQuestion, setPhotoQuestion] = React.useState('');
+  const [photoAnswer, setPhotoAnswer] = React.useState('');
+  const [questionLoading, setQuestionLoading] = React.useState(false);
 
   const API_BASE = 'https://vein-flashy-dog.abasthan.app';
   const DEVICE_ID = React.useMemo(getDeviceId, []);
@@ -215,7 +218,7 @@ function App() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => { setEditImage(String(reader.result)); setEditedImage(''); setEditError(''); };
+    reader.onload = () => { setEditImage(String(reader.result)); setEditedImage(''); setPhotoAnswer(''); setEditError(''); };
     reader.readAsDataURL(file);
   }
 
@@ -240,6 +243,27 @@ function App() {
     }
   }
 
+  async function askAboutPhoto(event) {
+    event.preventDefault();
+    if (!editImage || !photoQuestion.trim() || questionLoading) return;
+    setQuestionLoading(true);
+    setEditError('');
+    try {
+      const response = await fetch(apiUrl('/api/image-question'), requestOptions({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: editImage, question: photoQuestion.trim() })
+      }));
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'Pertanyaan foto gagal dijawab.');
+      setPhotoAnswer(data.answer);
+    } catch (requestError) {
+      setEditError(requestError.message);
+    } finally {
+      setQuestionLoading(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -260,7 +284,7 @@ function App() {
       </aside>
 
       <section className="conversation">
-        {activeView === 'studio' && <div className="studio-overlay"><div className="studio-panel"><div className="panel-heading"><ImagePlus size={21} /><span>STUDIO FOTO AI</span></div><p className="panel-intro">Pilih foto dan jelaskan perubahan yang kamu inginkan dengan bahasa biasa.</p><form className="studio-form" onSubmit={editPhoto}><label className="upload-zone">{editImage ? <img src={editImage} alt="Foto yang dipilih" /> : <><ImagePlus size={30} /><span>Pilih foto</span><small>PNG, JPG, atau WEBP · maksimal 10 MB</small></>}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectEditImage} /></label><label className="studio-prompt"><span>Instruksi edit</span><textarea value={editPrompt} onChange={(event) => setEditPrompt(event.target.value)} maxLength="1000" rows="4" placeholder="Contoh: ubah latar menjadi taman saat matahari terbenam, pertahankan wajah dan pencahayaan alami." /></label><button className="studio-submit" type="submit" disabled={!editImage || !editPrompt.trim() || editLoading}><Sparkles size={16} /> {editLoading ? 'Memproses foto...' : 'Edit foto'}</button></form>{editError && <div className="error-note">{editError}</div>}{editedImage && <div className="studio-result"><div className="panel-heading"><Sparkles size={18} /><span>HASIL EDIT</span></div><img src={editedImage} alt="Hasil edit foto" /><a className="studio-download" href={editedImage} download="logic-edit.png"><Download size={16} /> Unduh hasil</a></div>}</div></div>}
+        {activeView === 'studio' && <div className="studio-overlay"><div className="studio-panel"><div className="panel-heading"><ImagePlus size={21} /><span>STUDIO FOTO AI</span></div><p className="panel-intro">Pilih foto, edit sesuai kebutuhan, atau tanyakan apa yang terlihat di dalamnya.</p><label className="upload-zone">{editImage ? <img src={editImage} alt="Foto yang dipilih" /> : <><ImagePlus size={30} /><span>Pilih foto</span><small>PNG, JPG, atau WEBP · maksimal 10 MB</small></>}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectEditImage} /></label><div className="studio-actions"><form className="studio-form" onSubmit={editPhoto}><label className="studio-prompt"><span>Instruksi edit</span><textarea value={editPrompt} onChange={(event) => setEditPrompt(event.target.value)} maxLength="1000" rows="4" placeholder="Contoh: ubah latar menjadi taman saat matahari terbenam, pertahankan wajah dan pencahayaan alami." /></label><button className="studio-submit" type="submit" disabled={!editImage || !editPrompt.trim() || editLoading}><Sparkles size={16} /> {editLoading ? 'Memproses foto...' : 'Edit foto'}</button></form><form className="studio-form" onSubmit={askAboutPhoto}><label className="studio-prompt"><span>Tanyakan isi foto</span><textarea value={photoQuestion} onChange={(event) => setPhotoQuestion(event.target.value)} maxLength="1000" rows="4" placeholder="Contoh: objek apa saja yang terlihat di foto ini?" /></label><button className="studio-submit" type="submit" disabled={!editImage || !photoQuestion.trim() || questionLoading}><MessageCircle size={16} /> {questionLoading ? 'Menganalisis...' : 'Tanyakan foto'}</button></form></div>{editError && <div className="error-note">{editError}</div>}{photoAnswer && <div className="photo-answer"><div className="panel-heading"><MessageCircle size={18} /><span>JAWABAN FOTO</span></div><p>{photoAnswer}</p></div>}{editedImage && <div className="studio-result"><div className="panel-heading"><Sparkles size={18} /><span>HASIL EDIT</span></div><img src={editedImage} alt="Hasil edit foto" /><a className="studio-download" href={editedImage} download="logic-edit.png"><Download size={16} /> Unduh hasil</a></div>}</div></div>}
         <header className="topbar"><div><span className="eyebrow">CHAPTER 01 / {activeView === 'chat' ? 'RUANG UTAMA' : activeView === 'studio' ? 'STUDIO FOTO AI' : activeView === 'memory' ? 'CODEX MEMORY' : 'ACHIEVEMENTS'}</span><h1>{activeView === 'chat' ? 'Teman berpikir yang hadir.' : activeView === 'studio' ? 'Ubah foto menjadi kemungkinan baru.' : activeView === 'memory' ? 'Catatan yang kamu pilih untuk diingat.' : 'Jejak perjalananmu.'}</h1><p className="topbar-subtitle">{activeView === 'chat' ? (personality ? `${personality.name} · fakta di atas drama.` : 'Satu pikiran pada satu waktu.') : activeView === 'studio' ? 'Unggah foto, tulis hasil yang kamu bayangkan, lalu biarkan AI mengerjakannya.' : activeView === 'memory' ? 'Memory hanya tersimpan atas izinmu.' : 'Setiap langkah kecil tetap berarti.'}</p><div className="level-pill">LEVEL {progression.level || 1} · {progression.rank || 'Pemula'}</div></div><div className="online-status"><span /> SERVER ONLINE</div></header>
         {activeView === 'chat' ? <div className="message-list">
           <div className="welcome"><div className="welcome-icon"><BrainMark size={21} /></div><div><span className="quest-label">NEW ADVENTURE</span><strong>Selamat datang di Logic</strong><p>Mulai dari satu kalimat. Kita ubah menjadi langkah yang terasa mungkin.</p></div></div>

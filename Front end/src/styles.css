@@ -23,6 +23,7 @@
 .studio-overlay { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 28px; background: rgba(7, 10, 20, 0.78); backdrop-filter: blur(12px); overflow: auto; }
 .studio-panel { width: min(760px, 100%); padding: 26px; border: 1px solid rgba(182, 155, 238, 0.35); border-radius: 20px; background: linear-gradient(145deg, #20294b, #11182c); box-shadow: 0 24px 80px rgba(4, 7, 16, 0.6); }
 .studio-form { display: grid; gap: 16px; }
+.studio-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .upload-zone { display: grid; place-items: center; min-height: 230px; padding: 20px; border: 1px dashed rgba(246, 217, 135, 0.48); border-radius: 14px; color: #f6d987; background: rgba(8, 13, 27, 0.48); cursor: pointer; text-align: center; }
 .upload-zone img { max-width: 100%; max-height: 330px; border-radius: 10px; object-fit: contain; }
 .upload-zone span { margin-top: 10px; font: 600 17px 'Rajdhani'; }
@@ -35,7 +36,9 @@
 .studio-submit:disabled { cursor: not-allowed; opacity: .45; }
 .studio-result { display: grid; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(154, 170, 216, 0.18); }
 .studio-result img { width: 100%; max-height: 520px; border-radius: 12px; object-fit: contain; background: #080d1b; }
-@media (max-width: 640px) { .studio-overlay { padding: 12px; align-items: start; } .studio-panel { padding: 18px; } .upload-zone { min-height: 190px; } }
+.photo-answer { display: grid; gap: 10px; margin-top: 24px; padding: 16px; border: 1px solid rgba(131, 213, 165, 0.3); border-radius: 12px; background: rgba(131, 213, 165, 0.06); }
+.photo-answer p { margin: 0; color: #dfeadf; line-height: 1.6; font-size: 14px; }
+@media (max-width: 640px) { .studio-overlay { padding: 12px; align-items: start; } .studio-panel { padding: 18px; } .upload-zone { min-height: 190px; } .studio-actions { grid-template-columns: 1fr; gap: 24px; } }
 * { box-sizing: border-box; }
 body {
   margin: 0;
