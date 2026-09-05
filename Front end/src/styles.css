@@ -230,6 +230,7 @@ button, textarea { font: inherit; }
 .codex-entry, .achievement-row { display: flex; justify-content: space-between; gap: 14px; align-items: center; max-width: 680px; padding: 14px; border-top: 1px solid rgba(154, 170, 216, 0.18); }
 .codex-entry span { color: #b69bee; }
 .codex-entry p, .achievement-row p { margin: 0; color: #e4e0f1; font-size: 14px; }
+.memory-delete { flex: 0 0 auto; border: 1px solid rgba(238, 132, 159, 0.35); border-radius: 6px; background: transparent; color: #eaa0b5; padding: 6px 9px; cursor: pointer; }
 .achievement-row strong { color: #f2efff; font: 600 16px 'Rajdhani'; }
 .achievement-row p { margin-top: 4px; color: #8994b8; font-size: 12px; }
 .achievement-row b { color: #83d5a5; font: 600 9px 'Rajdhani'; letter-spacing: .12em; }

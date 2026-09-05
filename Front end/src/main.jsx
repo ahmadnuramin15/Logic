@@ -27,7 +27,7 @@ function App() {
   const [progression, setProgression] = React.useState({ xp: 0, level: 1, rank: 'Pemula', currentLevelXp: 0, nextLevelXp: 100, xpPerMessage: 10, stats: { totalMessages: 0 } });
   const [quests, setQuests] = React.useState([]);
 
-  const API_BASE = "https://vein-flashy-dog.abasthan.app";
+  const API_BASE = import.meta.env.VITE_API_BASE || 'https://vein-flashy-dog.abasthan.app';
 
   const activeQuest = React.useMemo(
     () => quests.find((quest) => !quest.completed) ?? quests[0] ?? null,
@@ -130,6 +130,19 @@ function App() {
     }
   }
 
+  async function deleteMemory(memoryId) {
+    try {
+      const response = await fetch(`${API_BASE}/api/memories/${memoryId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Gagal menghapus memory.');
+      }
+      setMemories((current) => current.filter((memory) => memory.id !== memoryId));
+    } catch (requestError) {
+      setMemoryError(requestError.message);
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -155,7 +168,7 @@ function App() {
           <div className="quest-banner"><div><span className="quest-label">ACTIVE QUEST</span><strong>{activeQuest?.title || 'Mulai tiga percakapan'}</strong><p>{activeQuest?.description || 'Buka ruang pikirmu lewat tiga pesan.'}</p></div><div className="quest-count">{String(activeQuest?.progress || 0).padStart(2, '0')}<small> / {String(activeQuest?.goal || 3).padStart(2, '0')}</small><span>{activeQuest?.completed ? 'COMPLETED' : 'IN PROGRESS'}</span></div></div>
           {messages.map((message, index) => <div className={`message-row ${message.role}`} key={`${message.role}-${index}`}><div className="avatar">{message.role === 'assistant' ? <img src="/Logic/avatar.jpeg" alt="" /> : 'K'}</div><div className="message-bubble"><span className="message-label">{message.role === 'assistant' ? 'LOGIC' : 'KAMU'} <small>09:4{index}</small></span>{message.role === 'assistant' ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown> : <p>{message.content}</p>}</div></div>)}
           {loading && <div className="message-row assistant"><div className="avatar"><img src="/Logic/avatar.jpeg" alt="" /></div><div className="message-bubble typing"><span /><span /><span /></div></div>}
-        </div> : <div className="content-panel">{activeView === 'memory' ? <><div className="panel-heading"><BookOpen size={21} /><span>CODEX MEMORY</span></div><p className="panel-intro">Informasi yang kamu simpan secara sadar untuk membantu Logic memahami konteksmu.</p><form className="memory-form" onSubmit={saveMemory}><textarea value={memoryInput} onChange={(event) => setMemoryInput(event.target.value)} rows="3" placeholder="Tuliskan fakta penting tentang kamu, preferensi, atau konteks yang ingin diingat AI..." /><button type="submit">Simpan memory</button></form>{memoryError && <div className="error-note memory-error">{memoryError}</div>}{memories.length ? memories.map((memory) => <div className="codex-entry" key={memory.id}><span>✦</span><p>{memory.content}</p></div>) : <div className="empty-panel">Belum ada memory tersimpan.</div>}</> : <><div className="panel-heading"><Trophy size={21} /><span>ACHIEVEMENTS</span></div><div className="achievement-row"><div><strong>Pendengar aktif</strong><p>Hadir dalam lima percakapan.</p></div><b>TERBUKA</b></div><div className="achievement-row"><div><strong>Mulai tiga percakapan</strong><p>Buka ruang pikirmu lewat tiga pesan.</p></div><b>SELESAI</b></div></>}</div>}
+        </div> : <div className="content-panel">{activeView === 'memory' ? <><div className="panel-heading"><BookOpen size={21} /><span>CODEX MEMORY</span></div><p className="panel-intro">Informasi yang kamu simpan secara sadar untuk membantu Logic memahami konteksmu.</p><form className="memory-form" onSubmit={saveMemory}><textarea value={memoryInput} onChange={(event) => setMemoryInput(event.target.value)} rows="3" maxLength="500" placeholder="Tuliskan fakta penting tentang kamu, preferensi, atau konteks yang ingin diingat AI..." /><button type="submit">Simpan memory</button></form>{memoryError && <div className="error-note memory-error">{memoryError}</div>}{memories.length ? memories.map((memory) => <div className="codex-entry" key={memory.id}><span>✦</span><p>{memory.content}</p><button type="button" className="memory-delete" onClick={() => deleteMemory(memory.id)} aria-label="Hapus memory" title="Hapus memory">Hapus</button></div>) : <div className="empty-panel">Belum ada memory tersimpan.</div>}</> : <><div className="panel-heading"><Trophy size={21} /><span>ACHIEVEMENTS</span></div><div className="achievement-row"><div><strong>Pendengar aktif</strong><p>Hadir dalam lima percakapan.</p></div><b>TERBUKA</b></div><div className="achievement-row"><div><strong>Mulai tiga percakapan</strong><p>Buka ruang pikirmu lewat tiga pesan.</p></div><b>SELESAI</b></div></>}</div>}
         {activeView === 'chat' && <form className="composer" onSubmit={sendMessage}><div className="composer-inner"><span className="composer-rune"><BrainMark size={16} /></span><textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="Tulis pesan untuk memulai..." rows="1" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(event); } }} /><button aria-label="Kirim pesan" title="Kirim pesan" disabled={!input.trim() || loading}><Send size={17} /></button></div><div className="composer-note">SHIFT + ENTER untuk baris baru <span>•</span> LOGIC siap mendengarkan</div>{error && <div className="error-note">{error}</div>}</form>}
       </section>
     </main>
