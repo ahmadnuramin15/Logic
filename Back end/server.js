@@ -49,7 +49,7 @@ const knowledgeBase = [
   'Rahel, dengan nama lengkap Rachel Ananda, adalah seorang mahasiswa (bukan mahasiswi) Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.',
   'Ahmad Nur Amin biasanya dipanggil Ainur oleh teman-teman dan orang di sekitarnya.'
 ].join('\n');
-const redeemCodePolicy = 'Untuk permintaan kode redeem game: kode bersifat spesifik per game, platform, wilayah, dan waktu. Jangan pernah mengarang atau menyatakan kode masih aktif tanpa sumber yang terverifikasi. Jika basis pengetahuan tidak memiliki kode aktif yang terverifikasi, katakan dengan jelas bahwa kode belum tersedia dan minta nama game serta platformnya. Bedakan kode aktif, kedaluwarsa, dan cara penukaran. Untuk jawaban yang benar-benar terbaru, gunakan sumber resmi game atau layanan data live yang dikonfigurasi server.';
+const redeemCodePolicy = 'Untuk permintaan kode redeem game, bantu user secara langsung. Cari dan berikan kode yang diketahui dari sumber resmi atau sumber live yang tersedia, lalu bedakan status aktif, kedaluwarsa, dan belum terverifikasi. Jangan membuat kode dengan pola acak atau menjamin kode masih aktif tanpa bukti. Jika tidak ada data terbaru yang bisa dikonfirmasi, katakan keterbatasannya, berikan kode yang memang diketahui beserta tanggal/sumber bila tersedia, lalu arahkan user ke halaman redeem resmi game. Minta nama game dan platform hanya jika belum disebutkan.';
 const imageEditPolicy = 'Untuk edit foto, ikuti instruksi kreatif user selama tidak meminta penipuan, eksploitasi seksual, pelecehan, atau tindakan berbahaya terhadap orang nyata. Jangan mengubah foto menjadi bukti kejadian nyata yang palsu. Jika instruksi melanggar batas tersebut, tolak singkat dan tawarkan edit aman.';
 
 const XP_PER_MESSAGE = 10;
@@ -244,7 +244,7 @@ function demoReply(message, deviceId) {
     : '';
 
   if (normalized.includes('pencipta') || normalized.includes('pembuat') || normalized.includes('dibuat oleh')) return `${creatorProfile}${memorySummary}`;
-  if (normalized.includes('kode redeem') || normalized.includes('redeem code') || normalized.includes('kode game')) return `Aku tidak akan mengarang kode redeem. Kode berbeda menurut game, platform, wilayah, dan masa berlaku. Sebutkan nama game dan platformnya agar bisa dicocokkan dengan kode yang terverifikasi atau sumber resmi.${memorySummary}`;
+  if (normalized.includes('kode redeem') || normalized.includes('redeem code') || normalized.includes('kode game')) return `Aku perlu memeriksa sumber terbaru agar tidak memberikan kode yang salah. Sebutkan nama game dan platformnya; setelah itu aku akan menyajikan kode yang diketahui, statusnya, dan cara redeem resminya.${memorySummary}`;
   if (['tegar', 'widi', 'andre widiyatmoko', 'galuh', 'hasbi', 'aji', 'alamussofiyullah', 'ayu', 'jumat', 'nurul', 'ainur', 'ahmad nur amin', 'rahel', 'rachel ananda'].some((name) => normalized.includes(name))) return `Berikut informasi yang tersimpan:\n${knowledgeBase}${memorySummary}`;
   if (normalized.includes('halo') || normalized.includes('hai')) return `Halo juga. Aku di sini dan siap mendengarkan dengan tenang. Apa yang ingin kamu mulai hari ini?${memorySummary}`;
   if (normalized.includes('bingung') || normalized.includes('stres')) return `Berhenti sejenak. Kita tidak perlu membesar-besarkan masalah ini. Pisahkan dulu fakta, ketakutan, dan hal yang masih bisa kamu kendalikan. Bagian mana yang paling mendesak?${memorySummary}`;
@@ -260,6 +260,10 @@ function emotionForMessage(message) {
 
 function providerConfigured() {
   return Boolean(process.env.AI_API_KEY);
+}
+
+function imageProviderConfigured() {
+  return Boolean(process.env.AI_IMAGE_API_KEY && process.env.AI_IMAGE_API_URL);
 }
 
 function imageEditBlocked(prompt) {
@@ -306,7 +310,7 @@ async function providerReply(message, history, deviceId) {
   }
 }
 
-app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: 'v8-avatar-emotion', providerConfigured: providerConfigured(), imageProviderConfigured: Boolean(process.env.AI_IMAGE_API_KEY || process.env.AI_API_KEY), imageProviderUrlConfigured: Boolean(process.env.AI_IMAGE_API_URL) }));
+app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: 'v8-avatar-emotion', providerConfigured: providerConfigured(), imageProviderConfigured: imageProviderConfigured(), imageProviderUrlConfigured: Boolean(process.env.AI_IMAGE_API_URL) }));
 app.get('/api/personality', (_request, response) => response.json(personality));
 app.get('/api/progression', (request, response) => response.json(getProgression(getDeviceId(request))));
 app.get('/api/quests', (request, response) => response.json(getQuests(getDeviceId(request))));
@@ -336,7 +340,7 @@ app.post('/api/image-edit', async (request, response) => {
   if (prompt.length > 1000) return response.status(400).json({ error: 'Instruksi edit maksimal 1000 karakter.' });
   if (image.length > 10 * 1024 * 1024) return response.status(413).json({ error: 'Ukuran foto terlalu besar. Maksimal 10 MB.' });
   if (imageEditBlocked(prompt)) return response.status(400).json({ error: 'Instruksi ini tidak dapat diproses. Coba gunakan transformasi foto yang aman dan kreatif.' });
-  if (!process.env.AI_IMAGE_API_KEY && !process.env.AI_API_KEY) return response.status(503).json({ error: 'Provider edit foto belum dikonfigurasi di backend.' });
+  if (!imageProviderConfigured()) return response.status(503).json({ error: 'Studio foto belum aktif: konfigurasi AI_IMAGE_API_KEY dan AI_IMAGE_API_URL belum lengkap di backend.' });
 
   const [, mimeType, encodedImage] = imageMatch;
   const form = new FormData();
@@ -345,9 +349,9 @@ app.post('/api/image-edit', async (request, response) => {
   form.append('model', process.env.AI_IMAGE_MODEL || 'gpt-image-1');
   form.append('size', process.env.AI_IMAGE_SIZE || '1024x1024');
   try {
-    const providerResponse = await fetch(process.env.AI_IMAGE_API_URL || 'https://api.openai.com/v1/images/edits', {
+    const providerResponse = await fetch(process.env.AI_IMAGE_API_URL, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.AI_IMAGE_API_KEY || process.env.AI_API_KEY}` },
+      headers: { Authorization: `Bearer ${process.env.AI_IMAGE_API_KEY}` },
       body: form
     });
     const data = await providerResponse.json().catch(() => null);
