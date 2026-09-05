@@ -16,6 +16,11 @@ database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, re
 database.exec(`CREATE TABLE IF NOT EXISTS achievements (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, goal INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, reward_xp INTEGER NOT NULL, unlocked INTEGER NOT NULL DEFAULT 0)`);
 database.exec(`CREATE TABLE IF NOT EXISTS system_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
 database.exec(`CREATE TABLE IF NOT EXISTS memories (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
+database.exec(`CREATE TABLE IF NOT EXISTS device_progression (device_id TEXT PRIMARY KEY, xp INTEGER NOT NULL DEFAULT 0)`);
+database.exec(`CREATE TABLE IF NOT EXISTS device_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, device_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
+database.exec(`CREATE TABLE IF NOT EXISTS device_quests (device_id TEXT NOT NULL, id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, goal INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, reward_xp INTEGER NOT NULL, completed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (device_id, id))`);
+database.exec(`CREATE TABLE IF NOT EXISTS device_achievements (device_id TEXT NOT NULL, id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, goal INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, reward_xp INTEGER NOT NULL, unlocked INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (device_id, id))`);
+database.exec(`CREATE TABLE IF NOT EXISTS device_memories (id INTEGER PRIMARY KEY AUTOINCREMENT, device_id TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
 
 const personality = {
   name: 'Assistant yang Sakti',
@@ -102,20 +107,35 @@ function ensureDefaultData() {
 
 ensureDefaultData();
 
-function getProgression() {
-  const xp = database.prepare('SELECT xp FROM progression WHERE id = 1').get().xp;
+function getDeviceId(request) {
+  const value = request.headers['x-device-id'];
+  return typeof value === 'string' && /^[a-zA-Z0-9-]{8,100}$/.test(value) ? value : 'legacy-device';
+}
+
+function ensureDeviceData(deviceId) {
+  database.prepare('INSERT OR IGNORE INTO device_progression (device_id, xp) VALUES (?, 0)').run(deviceId);
+  const insertQuest = database.prepare('INSERT OR IGNORE INTO device_quests (device_id, id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?, ?)');
+  for (const quest of [['first-steps', 'Mulai tiga percakapan', 'Buka ruang pikirmu lewat tiga pesan.', 3, 30], ['deep-thinker', 'Tetap fokus dalam lima percakapan', 'Buat lima percakapan dengan tujuan yang jelas dan konsisten.', 5, 40], ...questDefinitions]) insertQuest.run(deviceId, ...quest);
+  const insertAchievement = database.prepare('INSERT OR IGNORE INTO device_achievements (device_id, id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?, ?)');
+  for (const achievement of achievementDefinitions) insertAchievement.run(deviceId, ...achievement);
+}
+
+function getProgression(deviceId) {
+  ensureDeviceData(deviceId);
+  const xp = database.prepare('SELECT xp FROM device_progression WHERE device_id = ?').get(deviceId).xp;
   const level = Math.floor(xp / XP_PER_LEVEL) + 1;
   const rank = level >= 10 ? 'Mentor' : level >= 5 ? 'Pengamat' : level >= 3 ? 'Penjelajah' : 'Pemula';
   const stats = database.prepare(`SELECT
     SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) AS userMessages,
     SUM(CASE WHEN role = 'assistant' THEN 1 ELSE 0 END) AS assistantMessages,
     COUNT(*) AS totalMessages
-    FROM messages`).get();
+    FROM device_messages WHERE device_id = ?`).get(deviceId);
   return { xp, level, rank, currentLevelXp: xp % XP_PER_LEVEL, nextLevelXp: XP_PER_LEVEL, xpPerMessage: XP_PER_MESSAGE, stats };
 }
 
-function getQuests() {
-  return database.prepare('SELECT id, title, description, goal, progress, reward_xp AS rewardXp, completed FROM quests ORDER BY completed ASC, goal ASC, id ASC').all()
+function getQuests(deviceId) {
+  ensureDeviceData(deviceId);
+  return database.prepare('SELECT id, title, description, goal, progress, reward_xp AS rewardXp, completed FROM device_quests WHERE device_id = ? ORDER BY completed ASC, goal ASC, id ASC').all(deviceId)
     .map((quest) => ({ ...quest, completed: Boolean(quest.completed) }));
 }
 
@@ -125,14 +145,15 @@ function getAchievementSeriesMetric(id, metrics, fallback) {
   return series ? metrics[series[3]] : fallback;
 }
 
-function syncAchievements({ awardRewards = false } = {}) {
-  const userMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user'").get().count;
-  const savedMemories = database.prepare('SELECT COUNT(*) AS count FROM memories').get().count;
-  const completedQuests = database.prepare('SELECT COUNT(*) AS count FROM quests WHERE completed = 1').get().count;
-  const longMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND length(content) >= 120").get().count;
-  const questionMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND content LIKE '%?%'").get().count;
-  const topicMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND (lower(content) LIKE '%ai%' OR lower(content) LIKE '%belajar%' OR lower(content) LIKE '%proyek%' OR lower(content) LIKE '%rencana%')").get().count;
-  const level = Math.floor(database.prepare('SELECT xp FROM progression WHERE id = 1').get().xp / XP_PER_LEVEL) + 1;
+function syncAchievements(deviceId, { awardRewards = false } = {}) {
+  ensureDeviceData(deviceId);
+  const userMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user'").get(deviceId).count;
+  const savedMemories = database.prepare('SELECT COUNT(*) AS count FROM device_memories WHERE device_id = ?').get(deviceId).count;
+  const completedQuests = database.prepare('SELECT COUNT(*) AS count FROM device_quests WHERE device_id = ? AND completed = 1').get(deviceId).count;
+  const longMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user' AND length(content) >= 120").get(deviceId).count;
+  const questionMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user' AND content LIKE '%?%'").get(deviceId).count;
+  const topicMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user' AND (lower(content) LIKE '%ai%' OR lower(content) LIKE '%belajar%' OR lower(content) LIKE '%proyek%' OR lower(content) LIKE '%rencana%')").get(deviceId).count;
+  const level = Math.floor(database.prepare('SELECT xp FROM device_progression WHERE device_id = ?').get(deviceId).xp / XP_PER_LEVEL) + 1;
   const metrics = {
     messages: userMessages,
     memories: savedMemories,
@@ -151,13 +172,13 @@ function syncAchievements({ awardRewards = false } = {}) {
     topicMessages,
     level
   };
-  const achievements = database.prepare('SELECT id, progress, goal, unlocked, reward_xp AS rewardXp FROM achievements').all();
+  const achievements = database.prepare('SELECT id, progress, goal, unlocked, reward_xp AS rewardXp FROM device_achievements WHERE device_id = ?').all(deviceId);
   for (const achievement of achievements) {
     const metric = metrics[achievement.id] ?? getAchievementSeriesMetric(achievement.id, metrics, achievement.progress);
     const progress = Math.min(Number.isFinite(Number(metric)) ? Number(metric) : 0, achievement.goal);
     const unlocked = progress >= achievement.goal ? 1 : 0;
-    database.prepare('UPDATE achievements SET progress = ?, unlocked = ? WHERE id = ?').run(progress, unlocked, achievement.id);
-    if (awardRewards && unlocked && !achievement.unlocked) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(achievement.rewardXp);
+    database.prepare('UPDATE device_achievements SET progress = ?, unlocked = ? WHERE device_id = ? AND id = ?').run(progress, unlocked, deviceId, achievement.id);
+    if (awardRewards && unlocked && !achievement.unlocked) database.prepare('UPDATE device_progression SET xp = xp + ? WHERE device_id = ?').run(achievement.rewardXp, deviceId);
   }
 }
 
@@ -172,18 +193,16 @@ function removeRetroactiveAchievementXp() {
   database.prepare('INSERT INTO system_state (key, value) VALUES (?, ?)').run('retroactive-achievement-xp-fixed', 'true');
 }
 
-removeRetroactiveAchievementXp();
-syncAchievements();
-
-function getSkills() {
-  syncAchievements();
-  const achievements = database.prepare('SELECT id, title, description, goal, progress, reward_xp AS rewardXp, unlocked FROM achievements ORDER BY id').all()
+function getSkills(deviceId) {
+  syncAchievements(deviceId);
+  const achievements = database.prepare('SELECT id, title, description, goal, progress, reward_xp AS rewardXp, unlocked FROM device_achievements WHERE device_id = ? ORDER BY id').all(deviceId)
     .map((achievement) => ({ ...achievement, unlocked: Boolean(achievement.unlocked) }));
   return { active: [{ id: 'reflective-thinking', name: 'Berpikir reflektif', description: 'Mengurai masalah menjadi langkah yang realistis.' }], achievements };
 }
 
-function getMemories() {
-  return database.prepare('SELECT id, content, created_at AS createdAt FROM memories ORDER BY id DESC').all();
+function getMemories(deviceId) {
+  ensureDeviceData(deviceId);
+  return database.prepare('SELECT id, content, created_at AS createdAt FROM device_memories WHERE device_id = ? ORDER BY id DESC').all(deviceId);
 }
 
 app.use(cors({
@@ -192,20 +211,20 @@ app.use(cors({
     'https://ahmadnuramin15.github.io'
   ],
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-ID']
 }));
 app.use(express.json({ limit: '32kb' }));
 
-function buildMemoryContext() {
-  const memories = getMemories();
+function buildMemoryContext(deviceId) {
+  const memories = getMemories(deviceId);
   return memories.length
     ? `Memory yang secara sadar disimpan user. Gunakan hanya jika relevan dan jangan menganggapnya selalu benar: ${memories.map((memory) => `- ${memory.content}`).join('\n')}`
     : 'Belum ada memory user yang disimpan.';
 }
 
-function demoReply(message) {
+function demoReply(message, deviceId) {
   const normalized = message.toLowerCase();
-  const memories = getMemories();
+  const memories = getMemories(deviceId);
   const memorySummary = memories.length
     ? `\n\nCatatan yang saya ingat dari memory: ${memories.slice(0, 3).map((memory) => memory.content).join('; ')}`
     : '';
@@ -227,14 +246,14 @@ function providerConfigured() {
   return Boolean(process.env.AI_API_KEY);
 }
 
-function conversationMessages(message, history = []) {
+function conversationMessages(message, history = [], deviceId) {
   const safeHistory = Array.isArray(history)
     ? history.filter((item) => (item?.role === 'user' || item?.role === 'assistant') && typeof item.content === 'string')
       .slice(-12)
       .map((item) => ({ role: item.role, content: item.content.slice(0, 4000) }))
     : [];
 
-  const memoryContext = buildMemoryContext();
+  const memoryContext = buildMemoryContext(deviceId);
 
   return [
     { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}" ${memoryContext}` },
@@ -243,14 +262,14 @@ function conversationMessages(message, history = []) {
   ];
 }
 
-async function providerReply(message, history) {
+async function providerReply(message, history, deviceId) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
     const response = await fetch(process.env.AI_API_URL || 'https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.AI_MODEL || 'openai/gpt-oss-120b', messages: conversationMessages(message, history), temperature: 0.45 }),
+      body: JSON.stringify({ model: process.env.AI_MODEL || 'openai/gpt-oss-120b', messages: conversationMessages(message, history, deviceId), temperature: 0.45 }),
       signal: controller.signal
     });
     if (!response.ok) {
@@ -269,32 +288,37 @@ async function providerReply(message, history) {
 
 app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: 'v8-avatar-emotion', providerConfigured: providerConfigured() }));
 app.get('/api/personality', (_request, response) => response.json(personality));
-app.get('/api/progression', (_request, response) => response.json(getProgression()));
-app.get('/api/quests', (_request, response) => response.json(getQuests()));
-app.get('/api/skills', (_request, response) => response.json(getSkills()));
-app.get('/api/memories', (_request, response) => response.json(getMemories()));
+app.get('/api/progression', (request, response) => response.json(getProgression(getDeviceId(request))));
+app.get('/api/quests', (request, response) => response.json(getQuests(getDeviceId(request))));
+app.get('/api/skills', (request, response) => response.json(getSkills(getDeviceId(request))));
+app.get('/api/memories', (request, response) => response.json(getMemories(getDeviceId(request))));
 app.post('/api/memories', (request, response) => {
+  const deviceId = getDeviceId(request);
+  ensureDeviceData(deviceId);
   const content = typeof request.body?.content === 'string' ? request.body.content.trim() : '';
   if (!content || content.length > 500) return response.status(400).json({ error: 'Memory wajib diisi dan maksimal 500 karakter.' });
-  const result = database.prepare('INSERT INTO memories (content) VALUES (?)').run(content);
+  const result = database.prepare('INSERT INTO device_memories (device_id, content) VALUES (?, ?)').run(deviceId, content);
   return response.status(201).json({ id: result.lastInsertRowid, content });
 });
 app.delete('/api/memories/:id', (request, response) => {
+  const deviceId = getDeviceId(request);
   const id = Number(request.params.id);
   if (!Number.isInteger(id)) return response.status(400).json({ error: 'ID memory tidak valid.' });
-  const result = database.prepare('DELETE FROM memories WHERE id = ?').run(id);
+  const result = database.prepare('DELETE FROM device_memories WHERE id = ? AND device_id = ?').run(id, deviceId);
   if (!result.changes) return response.status(404).json({ error: 'Memory tidak ditemukan.' });
   return response.status(204).end();
 });
 app.post('/api/chat', async (request, response) => {
+  const deviceId = getDeviceId(request);
+  ensureDeviceData(deviceId);
   const message = typeof request.body?.message === 'string' ? request.body.message.trim() : '';
   if (!message || message.length > 4000) return response.status(400).json({ error: 'Pesan wajib diisi dan maksimal 4000 karakter.' });
-  database.prepare('INSERT INTO messages (role, content) VALUES (?, ?)').run('user', message);
+  database.prepare('INSERT INTO device_messages (device_id, role, content) VALUES (?, ?, ?)').run(deviceId, 'user', message);
   let reply;
   let mode = 'demo';
   const emotion = emotionForMessage(message);
   try {
-    reply = providerConfigured() ? await providerReply(message, request.body?.history) : demoReply(message);
+    reply = providerConfigured() ? await providerReply(message, request.body?.history, deviceId) : demoReply(message, deviceId);
     mode = providerConfigured() ? 'provider' : 'demo';
   } catch (error) {
     console.error('AI provider request failed:', error.message);
@@ -306,24 +330,24 @@ app.post('/api/chat', async (request, response) => {
     return response.status(502).json({ error: providerError });
   }
   const updateProgress = database.transaction(() => {
-    database.prepare('INSERT INTO messages (role, content) VALUES (?, ?)').run('assistant', reply);
-    database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(XP_PER_MESSAGE);
+    database.prepare('INSERT INTO device_messages (device_id, role, content) VALUES (?, ?, ?)').run(deviceId, 'assistant', reply);
+    database.prepare('UPDATE device_progression SET xp = xp + ? WHERE device_id = ?').run(XP_PER_MESSAGE, deviceId);
 
-    const quest = database.prepare('SELECT id, progress, goal, completed, reward_xp AS rewardXp FROM quests WHERE completed = 0 ORDER BY goal ASC, id ASC LIMIT 1').get();
+    const quest = database.prepare('SELECT id, progress, goal, completed, reward_xp AS rewardXp FROM device_quests WHERE device_id = ? AND completed = 0 ORDER BY goal ASC, id ASC LIMIT 1').get(deviceId);
     if (quest) {
       const progress = Math.min(quest.progress + 1, quest.goal);
       const completed = progress >= quest.goal ? 1 : 0;
-      database.prepare('UPDATE quests SET progress = ?, completed = ? WHERE id = ?').run(progress, completed, quest.id);
-      if (completed) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(quest.rewardXp);
+      database.prepare('UPDATE device_quests SET progress = ?, completed = ? WHERE device_id = ? AND id = ?').run(progress, completed, deviceId, quest.id);
+      if (completed) database.prepare('UPDATE device_progression SET xp = xp + ? WHERE device_id = ?').run(quest.rewardXp, deviceId);
     }
 
-    const userMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user'").get().count;
-    const savedMemories = database.prepare('SELECT COUNT(*) AS count FROM memories').get().count;
-    const completedQuests = database.prepare('SELECT COUNT(*) AS count FROM quests WHERE completed = 1').get().count;
-    const longMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND length(content) >= 120").get().count;
-    const questionMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND content LIKE '%?%'").get().count;
-    const topicMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND (lower(content) LIKE '%ai%' OR lower(content) LIKE '%belajar%' OR lower(content) LIKE '%proyek%' OR lower(content) LIKE '%rencana%')").get().count;
-    const level = Math.floor(database.prepare('SELECT xp FROM progression WHERE id = 1').get().xp / XP_PER_LEVEL) + 1;
+    const userMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user'").get(deviceId).count;
+    const savedMemories = database.prepare('SELECT COUNT(*) AS count FROM device_memories WHERE device_id = ?').get(deviceId).count;
+    const completedQuests = database.prepare('SELECT COUNT(*) AS count FROM device_quests WHERE device_id = ? AND completed = 1').get(deviceId).count;
+    const longMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user' AND length(content) >= 120").get(deviceId).count;
+    const questionMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user' AND content LIKE '%?%'").get(deviceId).count;
+    const topicMessages = database.prepare("SELECT COUNT(*) AS count FROM device_messages WHERE device_id = ? AND role = 'user' AND (lower(content) LIKE '%ai%' OR lower(content) LIKE '%belajar%' OR lower(content) LIKE '%proyek%' OR lower(content) LIKE '%rencana%')").get(deviceId).count;
+    const level = Math.floor(database.prepare('SELECT xp FROM device_progression WHERE device_id = ?').get(deviceId).xp / XP_PER_LEVEL) + 1;
     const metrics = {
       messages: userMessages,
       memories: savedMemories,
@@ -342,17 +366,17 @@ app.post('/api/chat', async (request, response) => {
       topicMessages,
       level
     };
-    const achievements = database.prepare('SELECT id, progress, goal, unlocked, reward_xp AS rewardXp FROM achievements').all();
+    const achievements = database.prepare('SELECT id, progress, goal, unlocked, reward_xp AS rewardXp FROM device_achievements WHERE device_id = ?').all(deviceId);
     for (const achievement of achievements) {
       const metric = metrics[achievement.id] ?? getAchievementSeriesMetric(achievement.id, metrics, achievement.progress);
       const progress = Math.min(Number.isFinite(Number(metric)) ? Number(metric) : 0, achievement.goal);
       const unlocked = progress >= achievement.goal ? 1 : 0;
-      database.prepare('UPDATE achievements SET progress = ?, unlocked = ? WHERE id = ?').run(progress, unlocked, achievement.id);
-      if (unlocked && !achievement.unlocked) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(achievement.rewardXp);
+      database.prepare('UPDATE device_achievements SET progress = ?, unlocked = ? WHERE device_id = ? AND id = ?').run(progress, unlocked, deviceId, achievement.id);
+      if (unlocked && !achievement.unlocked) database.prepare('UPDATE device_progression SET xp = xp + ? WHERE device_id = ?').run(achievement.rewardXp, deviceId);
     }
   });
   updateProgress();
-  return response.json({ reply, mode, emotion, memories: getMemories(), progression: getProgression(), quests: getQuests(), skills: getSkills() });
+  return response.json({ reply, mode, emotion, memories: getMemories(deviceId), progression: getProgression(deviceId), quests: getQuests(deviceId), skills: getSkills(deviceId) });
 });
 const PORT = process.env.PORT || 3001;
 
