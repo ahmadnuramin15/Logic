@@ -14,6 +14,7 @@ database.exec(`CREATE TABLE IF NOT EXISTS quests (id TEXT PRIMARY KEY, title TEX
 database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)').run('first-steps', 'Mulai tiga percakapan', 'Buka ruang pikirmu lewat tiga pesan.', 3, 30);
 database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)').run('deep-thinker', 'Tetap fokus dalam lima percakapan', 'Buat lima percakapan dengan tujuan yang jelas dan konsisten.', 5, 40);
 database.exec(`CREATE TABLE IF NOT EXISTS achievements (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, goal INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, reward_xp INTEGER NOT NULL, unlocked INTEGER NOT NULL DEFAULT 0)`);
+database.exec(`CREATE TABLE IF NOT EXISTS system_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
 database.exec(`CREATE TABLE IF NOT EXISTS memories (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
 
 const personality = {
@@ -124,7 +125,7 @@ function getAchievementSeriesMetric(id, metrics, fallback) {
   return series ? metrics[series[3]] : fallback;
 }
 
-function syncAchievements() {
+function syncAchievements({ awardRewards = false } = {}) {
   const userMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user'").get().count;
   const savedMemories = database.prepare('SELECT COUNT(*) AS count FROM memories').get().count;
   const completedQuests = database.prepare('SELECT COUNT(*) AS count FROM quests WHERE completed = 1').get().count;
@@ -156,9 +157,23 @@ function syncAchievements() {
     const progress = Math.min(Number.isFinite(Number(metric)) ? Number(metric) : 0, achievement.goal);
     const unlocked = progress >= achievement.goal ? 1 : 0;
     database.prepare('UPDATE achievements SET progress = ?, unlocked = ? WHERE id = ?').run(progress, unlocked, achievement.id);
-    if (unlocked && !achievement.unlocked) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(achievement.rewardXp);
+    if (awardRewards && unlocked && !achievement.unlocked) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(achievement.rewardXp);
   }
 }
+
+function removeRetroactiveAchievementXp() {
+  const marker = database.prepare('SELECT value FROM system_state WHERE key = ?').get('retroactive-achievement-xp-fixed');
+  if (marker) return;
+
+  const earnedFromAchievements = database.prepare('SELECT COALESCE(SUM(reward_xp), 0) AS total FROM achievements WHERE unlocked = 1').get().total;
+  if (earnedFromAchievements > 0) {
+    database.prepare('UPDATE progression SET xp = MAX(0, xp - ?) WHERE id = 1').run(earnedFromAchievements);
+  }
+  database.prepare('INSERT INTO system_state (key, value) VALUES (?, ?)').run('retroactive-achievement-xp-fixed', 'true');
+}
+
+removeRetroactiveAchievementXp();
+syncAchievements();
 
 function getSkills() {
   syncAchievements();
