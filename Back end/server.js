@@ -46,7 +46,7 @@ const knowledgeBase = [
   'Ayu, dengan nama lengkap Ayu Safira Nur, adalah mahasiswa UIN Madura, Program Studi Bimbingan Konseling, Fakultas Ilmu Pendidikan.',
   'Jumat, dengan nama lengkap Jumat S.Pd, adalah alumni Universitas Negeri Malang dan sekarang menjadi ayah dari Ahmad Nur Amin, pencipta Logic.',
   'Nurul, dengan nama lengkap Drs. Nurul Kojimah, berstatus sebagai pensiunan guru SMPN 5 Pamekasan, serta sekarang menjadi ibu dari pencipta Logic, Ahmad Nur Amin.',
-  'Rahel, dengan nama lengkap Rachel Ananda, adalah mahasiswa Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.',
+  'Rahel, dengan nama lengkap Rachel Ananda, adalah seorang mahasiswa (bukan mahasiswi) Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.',
   'Ahmad Nur Amin biasanya dipanggil Ainur oleh teman-teman dan orang di sekitarnya.'
 ].join('\n');
 const redeemCodePolicy = 'Untuk permintaan kode redeem game: kode bersifat spesifik per game, platform, wilayah, dan waktu. Jangan pernah mengarang atau menyatakan kode masih aktif tanpa sumber yang terverifikasi. Jika basis pengetahuan tidak memiliki kode aktif yang terverifikasi, katakan dengan jelas bahwa kode belum tersedia dan minta nama game serta platformnya. Bedakan kode aktif, kedaluwarsa, dan cara penukaran. Untuk jawaban yang benar-benar terbaru, gunakan sumber resmi game atau layanan data live yang dikonfigurasi server.';
@@ -306,7 +306,7 @@ async function providerReply(message, history, deviceId) {
   }
 }
 
-app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: 'v8-avatar-emotion', providerConfigured: providerConfigured() }));
+app.get('/api/health', (_request, response) => response.json({ status: 'ok', version: 'v8-avatar-emotion', providerConfigured: providerConfigured(), imageProviderConfigured: Boolean(process.env.AI_IMAGE_API_KEY || process.env.AI_API_KEY), imageProviderUrlConfigured: Boolean(process.env.AI_IMAGE_API_URL) }));
 app.get('/api/personality', (_request, response) => response.json(personality));
 app.get('/api/progression', (request, response) => response.json(getProgression(getDeviceId(request))));
 app.get('/api/quests', (request, response) => response.json(getQuests(getDeviceId(request))));
@@ -342,7 +342,8 @@ app.post('/api/image-edit', async (request, response) => {
   const form = new FormData();
   form.append('image', new Blob([Buffer.from(encodedImage, 'base64')], { type: mimeType }), `upload.${mimeType.split('/')[1]}`);
   form.append('prompt', prompt);
-  form.append('response_format', 'b64_json');
+  form.append('model', process.env.AI_IMAGE_MODEL || 'gpt-image-1');
+  form.append('size', process.env.AI_IMAGE_SIZE || '1024x1024');
   try {
     const providerResponse = await fetch(process.env.AI_IMAGE_API_URL || 'https://api.openai.com/v1/images/edits', {
       method: 'POST',
@@ -352,11 +353,13 @@ app.post('/api/image-edit', async (request, response) => {
     const data = await providerResponse.json().catch(() => null);
     if (!providerResponse.ok) {
       console.error('IMAGE PROVIDER ERROR:', providerResponse.status, data);
-      return response.status(502).json({ error: 'Provider edit foto gagal memproses gambar.' });
+      const providerMessage = data?.error?.message || data?.error || '';
+      return response.status(502).json({ error: `Provider edit foto menolak permintaan (${providerResponse.status}). ${providerMessage}`.trim() });
     }
-    const result = data?.data?.[0]?.b64_json;
-    if (!result) return response.status(502).json({ error: 'Provider tidak mengembalikan hasil gambar.' });
-    return response.json({ image: `data:image/png;base64,${result}` });
+    const result = data?.data?.[0];
+    if (result?.b64_json) return response.json({ image: `data:image/png;base64,${result.b64_json}` });
+    if (typeof result?.url === 'string' && result.url.startsWith('https://')) return response.json({ image: result.url });
+    return response.status(502).json({ error: 'Provider merespons tanpa gambar hasil. Periksa AI_IMAGE_API_URL dan AI_IMAGE_MODEL.' });
   } catch (error) {
     console.error('Image edit request failed:', error.message);
     return response.status(502).json({ error: 'Layanan edit foto sedang tidak tersedia.' });
