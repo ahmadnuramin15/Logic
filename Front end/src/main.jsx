@@ -62,10 +62,11 @@ function App() {
 
   const API_BASE = 'https://vein-flashy-dog.abasthan.app';
   const DEVICE_ID = React.useMemo(getDeviceId, []);
+  const apiUrl = React.useCallback((path) => `${API_BASE}${path}${path.includes('?') ? '&' : '?'}deviceId=${encodeURIComponent(DEVICE_ID)}`, [DEVICE_ID]);
   const requestOptions = React.useCallback((options = {}) => ({
     ...options,
-    headers: { 'Content-Type': 'application/json', 'X-Device-ID': DEVICE_ID, ...(options.headers || {}) }
-  }), [DEVICE_ID]);
+    headers: { ...(options.headers || {}) }
+  }), []);
 
   const activeQuest = React.useMemo(
     () => quests.find((quest) => !quest.completed) ?? quests[0] ?? null,
@@ -85,11 +86,11 @@ function App() {
     async function loadAppData() {
       try {
         const [personalityResponse, memoriesResponse, progressionResponse, questsResponse, skillsResponse] = await Promise.all([
-          fetch(`${API_BASE}/api/personality`, requestOptions()),
-          fetch(`${API_BASE}/api/memories`, requestOptions()),
-          fetch(`${API_BASE}/api/progression`, requestOptions()),
-          fetch(`${API_BASE}/api/quests`, requestOptions()),
-          fetch(`${API_BASE}/api/skills`, requestOptions())
+          fetch(apiUrl('/api/personality'), requestOptions()),
+          fetch(apiUrl('/api/memories'), requestOptions()),
+          fetch(apiUrl('/api/progression'), requestOptions()),
+          fetch(apiUrl('/api/quests'), requestOptions()),
+          fetch(apiUrl('/api/skills'), requestOptions())
         ]);
 
         if (personalityResponse.ok) setPersonality(await personalityResponse.json());
@@ -119,7 +120,7 @@ function App() {
     }
 
     loadAppData();
-  }, [requestOptions]);
+  }, [apiUrl, requestOptions]);
 
   async function sendMessage(event) {
     event.preventDefault();
@@ -132,7 +133,7 @@ function App() {
     setMessages((current) => [...current, { role: 'user', content, createdAt: new Date().toISOString() }]);
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/chat`, requestOptions({
+      const response = await fetch(apiUrl('/api/chat'), requestOptions({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: content, history: requestHistory })
       }));
@@ -163,7 +164,7 @@ function App() {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/memories`, requestOptions({
+      const response = await fetch(apiUrl('/api/memories'), requestOptions({
         method: 'POST',
         body: JSON.stringify({ content })
       }));
@@ -186,7 +187,7 @@ function App() {
 
   async function deleteMemory(memoryId) {
     try {
-      const response = await fetch(`${API_BASE}/api/memories/${memoryId}`, requestOptions({ method: 'DELETE' }));
+      const response = await fetch(apiUrl(`/api/memories/${memoryId}`), requestOptions({ method: 'DELETE' }));
       if (!response.ok) {
         const data = await response.json().catch(() => null);
         throw new Error(data?.error || 'Gagal menghapus memory.');

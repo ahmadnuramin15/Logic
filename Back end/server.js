@@ -108,7 +108,7 @@ function ensureDefaultData() {
 ensureDefaultData();
 
 function getDeviceId(request) {
-  const value = request.headers['x-device-id'];
+  const value = request.headers['x-device-id'] || request.query.deviceId;
   return typeof value === 'string' && /^[a-zA-Z0-9-]{8,100}$/.test(value) ? value : 'legacy-device';
 }
 
