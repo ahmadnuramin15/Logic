@@ -51,6 +51,7 @@ const knowledgeBase = [
 ].join('\n');
 const redeemCodePolicy = 'Untuk permintaan kode redeem game, bantu user secara langsung. Cari dan berikan kode yang diketahui dari sumber resmi atau sumber live yang tersedia, lalu bedakan status aktif, kedaluwarsa, dan belum terverifikasi. Jangan membuat kode dengan pola acak atau menjamin kode masih aktif tanpa bukti. Jika tidak ada data terbaru yang bisa dikonfirmasi, katakan keterbatasannya, berikan kode yang memang diketahui beserta tanggal/sumber bila tersedia, lalu arahkan user ke halaman redeem resmi game. Minta nama game dan platform hanya jika belum disebutkan.';
 const imageEditPolicy = 'Untuk edit foto, ikuti instruksi kreatif user selama tidak meminta penipuan, eksploitasi seksual, pelecehan, atau tindakan berbahaya terhadap orang nyata. Jangan mengubah foto menjadi bukti kejadian nyata yang palsu. Jika instruksi melanggar batas tersebut, tolak singkat dan tawarkan edit aman.';
+const academicPolicy = 'Kamu adalah pendamping akademik yang teliti untuk mahasiswa. Untuk proposal, makalah, dan skripsi, bantu dari perumusan judul, latar belakang, rumusan masalah, tujuan, tinjauan pustaka, metode, analisis, pembahasan, kesimpulan, sampai daftar pustaka. Jangan menjanjikan karya pasti tanpa revisi karena kualitas harus divalidasi dosen dan pedoman kampus. Jangan mengarang data penelitian, hasil, DOI, kutipan, atau sumber. Bedakan draf, fakta dari sumber, analisis, dan bagian yang harus diisi user. Gunakan sitasi penulis-tahun dan berikan daftar pustaka yang dapat dilacak. Tanyakan program studi, kampus, gaya sitasi, batas halaman, metode, dan objek penelitian bila belum jelas. Jaga orisinalitas: bantu memahami dan menyusun ulang, bukan menyalin.';
 
 const XP_PER_MESSAGE = 10;
 const XP_PER_LEVEL = 100;
@@ -262,6 +263,28 @@ function providerConfigured() {
   return Boolean(process.env.AI_API_KEY);
 }
 
+function isAcademicRequest(message) {
+  return /proposal|makalah|skripsi|jurnal|penelitian|karya ilmiah|rumusan masalah|tinjauan pustaka|metodologi|daftar pustaka/i.test(message);
+}
+
+async function academicSources(message) {
+  if (!isAcademicRequest(message)) return '';
+  const query = message.replace(/\s+/g, ' ').trim().slice(0, 500);
+  try {
+    const response = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=8&sort=relevance_score:desc&select=title,publication_year,doi,authorships,primary_location`, { headers: { 'User-Agent': 'AI-PENTER/1.0 mailto:academic@example.com' } });
+    if (!response.ok) return 'Pencarian sumber akademik live tidak tersedia saat ini.';
+    const data = await response.json();
+    const sources = (data.results || []).filter((item) => item.title).map((item, index) => {
+      const authors = (item.authorships || []).slice(0, 3).map((author) => author.author?.display_name).filter(Boolean).join(', ') || 'Penulis tidak tersedia';
+      return `${index + 1}. ${item.title} (${item.publication_year || 'tahun tidak tersedia'}). ${authors}. DOI: ${item.doi || 'tidak tersedia'}`;
+    });
+    return sources.length ? `Sumber akademik live sebagai bahan verifikasi (jangan menganggapnya otomatis sesuai topik):\n${sources.join('\n')}` : 'Tidak ditemukan sumber akademik yang cukup relevan dari pencarian live.';
+  } catch (error) {
+    console.error('Academic source search failed:', error.message);
+    return 'Pencarian sumber akademik live sedang tidak tersedia.';
+  }
+}
+
 function imageProviderConfigured() {
   return Boolean(process.env.AI_IMAGE_API_KEY && process.env.AI_IMAGE_API_URL);
 }
@@ -270,7 +293,7 @@ function imageEditBlocked(prompt) {
   return /seksual|telanjang|bugil|eksploitasi anak|penipuan|palsukan dokumen|bukti palsu|kekerasan terhadap anak/i.test(prompt);
 }
 
-function conversationMessages(message, history = [], deviceId) {
+async function conversationMessages(message, history = [], deviceId) {
   const safeHistory = Array.isArray(history)
     ? history.filter((item) => (item?.role === 'user' || item?.role === 'assistant') && typeof item.content === 'string')
       .slice(-12)
@@ -278,9 +301,10 @@ function conversationMessages(message, history = [], deviceId) {
     : [];
 
   const memoryContext = buildMemoryContext(deviceId);
+  const sourceContext = await academicSources(message);
 
   return [
-    { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}". ${redeemCodePolicy} ${imageEditPolicy} Basis pengetahuan tentang orang-orang yang relevan:\n${knowledgeBase}\n${memoryContext}` },
+    { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}". ${redeemCodePolicy} ${imageEditPolicy} ${academicPolicy} Basis pengetahuan tentang orang-orang yang relevan:\n${knowledgeBase}\n${sourceContext}\n${memoryContext}` },
     ...safeHistory,
     { role: 'user', content: message }
   ];
@@ -293,7 +317,7 @@ async function providerReply(message, history, deviceId) {
     const response = await fetch(process.env.AI_API_URL || 'https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.AI_MODEL || 'openai/gpt-oss-120b', messages: conversationMessages(message, history, deviceId), temperature: 0.45 }),
+      body: JSON.stringify({ model: process.env.AI_MODEL || 'openai/gpt-oss-120b', messages: await conversationMessages(message, history, deviceId), temperature: 0.35 }),
       signal: controller.signal
     });
     if (!response.ok) {
@@ -316,6 +340,12 @@ app.get('/api/progression', (request, response) => response.json(getProgression(
 app.get('/api/quests', (request, response) => response.json(getQuests(getDeviceId(request))));
 app.get('/api/skills', (request, response) => response.json(getSkills(getDeviceId(request))));
 app.get('/api/memories', (request, response) => response.json(getMemories(getDeviceId(request))));
+app.get('/api/academic/sources', async (request, response) => {
+  const query = typeof request.query.q === 'string' ? request.query.q.trim() : '';
+  if (!query || query.length > 500) return response.status(400).json({ error: 'Parameter q wajib diisi dan maksimal 500 karakter.' });
+  const context = await academicSources(`penelitian ${query}`);
+  return response.json({ query, context });
+});
 app.post('/api/memories', (request, response) => {
   const deviceId = getDeviceId(request);
   ensureDeviceData(deviceId);
