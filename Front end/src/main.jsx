@@ -36,7 +36,7 @@ function App() {
   const [quests, setQuests] = React.useState([]);
   const [achievements, setAchievements] = React.useState([]);
 
-  const API_BASE = import.meta.env.VITE_API_BASE || 'https://vein-flashy-dog.abasthan.app';
+  const API_BASE = 'https://vein-flashy-dog.abasthan.app';
 
   const activeQuest = React.useMemo(
     () => quests.find((quest) => !quest.completed) ?? quests[0] ?? null,
