@@ -227,10 +227,42 @@ button, textarea { font: inherit; }
 }
 .panel-heading { display: flex; align-items: center; gap: 10px; color: #f6d987; font: 700 15px 'Rajdhani'; letter-spacing: .14em; }
 .panel-intro { max-width: 620px; margin: 12px 0 22px; color: #929dc0; line-height: 1.6; font-size: 13px; }
+.codex-view { max-width: 920px; margin: 0 auto; }
+.codex-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+.codex-orbit { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 8px; min-width: 92px; padding: 12px 14px; border: 1px solid rgba(246, 217, 135, 0.25); border-radius: 14px; color: #f6d987; background: rgba(246, 217, 135, 0.06); }
+.codex-orbit strong { font: 700 22px 'Rajdhani'; }
+.codex-orbit span { grid-column: 2; color: #8f9abb; font: 700 9px 'Rajdhani'; letter-spacing: .12em; }
+.memory-overview { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 22px 0; }
+.memory-overview > div { display: flex; flex-direction: column; gap: 5px; padding: 12px 14px; border: 1px solid rgba(142, 165, 233, 0.14); border-radius: 12px; background: rgba(25, 34, 62, 0.62); }
+.memory-overview span { color: #7784ab; font: 700 9px 'Rajdhani'; letter-spacing: .12em; }
+.memory-overview strong { color: #eae4fb; font: 600 13px 'Rajdhani'; letter-spacing: .04em; }
+.memory-overview i { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #83d5a5; box-shadow: 0 0 0 4px rgba(131, 213, 165, 0.12); }
+.memory-form { padding: 16px; border: 1px solid rgba(182, 155, 238, 0.24); border-radius: 15px; background: linear-gradient(145deg, rgba(32, 38, 72, 0.86), rgba(20, 27, 49, 0.9)); }
+.memory-form-heading, .memory-form-footer, .memory-toolbar, .memory-toolbar > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.memory-form-heading span { color: #eee9fb; font: 600 14px 'Rajdhani'; }
+.memory-form-heading small, .memory-form-footer span, .memory-toolbar > div span { color: #7d89ad; font-size: 11px; }
+.memory-form textarea { display: block; width: 100%; min-height: 76px; margin: 12px 0; padding: 12px; resize: vertical; border: 1px solid rgba(144, 162, 220, 0.2); border-radius: 10px; outline: 0; color: #f2efff; background: rgba(8, 13, 27, 0.42); line-height: 1.5; }
+.memory-form textarea:focus { border-color: rgba(182, 155, 238, 0.72); box-shadow: 0 0 0 3px rgba(182, 155, 238, 0.09); }
+.memory-form textarea::placeholder { color: #69769b; }
+.memory-form-footer { align-items: center; }
+.memory-form-footer button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid #8b6de8; border-radius: 9px; color: #15172a; background: linear-gradient(135deg, #e2d0ff, #b69bee); cursor: pointer; font-size: 12px; font-weight: 700; }
+.memory-toolbar { margin: 28px 0 10px; }
+.memory-toolbar strong { color: #eee9fb; font: 600 16px 'Rajdhani'; }
+.memory-toolbar > div span { margin-left: 9px; }
+.memory-toolbar label { display: flex; align-items: center; gap: 8px; width: min(250px, 42%); padding: 8px 10px; border: 1px solid rgba(142, 165, 233, 0.2); border-radius: 9px; color: #8490b2; background: rgba(16, 23, 43, 0.68); }
+.memory-toolbar input { width: 100%; border: 0; outline: 0; color: #eee9fb; background: transparent; font-size: 12px; }
+.memory-toolbar input::placeholder { color: #68759a; }
+.memory-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .codex-entry, .achievement-row { display: flex; justify-content: space-between; gap: 14px; align-items: center; max-width: 680px; padding: 14px; border-top: 1px solid rgba(154, 170, 216, 0.18); }
-.codex-entry span { color: #b69bee; }
+.memory-grid .codex-entry { min-width: 0; max-width: none; align-items: flex-start; padding: 15px; border: 1px solid rgba(142, 165, 233, 0.15); border-radius: 14px; background: linear-gradient(145deg, rgba(29, 38, 70, 0.84), rgba(19, 26, 47, 0.86)); transition: border-color .2s ease, transform .2s ease; }
+.memory-grid .codex-entry:hover { border-color: rgba(182, 155, 238, 0.48); transform: translateY(-2px); }
+.memory-entry-mark { display: grid; flex: 0 0 30px; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(246, 217, 135, 0.3); border-radius: 9px; color: #f6d987; background: rgba(246, 217, 135, 0.08); }
+.memory-entry-body { min-width: 0; flex: 1; }
 .codex-entry p, .achievement-row p { margin: 0; color: #e4e0f1; font-size: 14px; }
-.memory-delete { flex: 0 0 auto; border: 1px solid rgba(238, 132, 159, 0.35); border-radius: 6px; background: transparent; color: #eaa0b5; padding: 6px 9px; cursor: pointer; }
+.memory-entry-body p { overflow-wrap: anywhere; line-height: 1.55; }
+.memory-entry-body small { display: block; margin-top: 9px; color: #7784aa; font-size: 10px; }
+.memory-delete { display: grid; flex: 0 0 auto; place-items: center; width: 29px; height: 29px; border: 1px solid rgba(238, 132, 159, 0.28); border-radius: 7px; background: transparent; color: #eaa0b5; cursor: pointer; }
+.memory-delete:hover { border-color: #eaa0b5; background: rgba(238, 132, 159, 0.1); }
 .achievement-row strong { color: #f2efff; font: 600 16px 'Rajdhani'; }
 .achievement-row p { margin-top: 4px; color: #8994b8; font-size: 12px; }
 .achievement-row b { color: #83d5a5; font: 600 9px 'Rajdhani'; letter-spacing: .12em; }
@@ -389,6 +421,18 @@ button, textarea { font: inherit; }
     margin: 18px 16px 0;
     padding: 18px 16px;
   }
+  .codex-header { gap: 12px; }
+  .codex-orbit { min-width: 78px; padding: 9px 10px; }
+  .memory-overview { gap: 6px; }
+  .memory-overview > div { padding: 10px 8px; }
+  .memory-overview span { font-size: 8px; letter-spacing: .06em; }
+  .memory-overview strong { font-size: 11px; }
+  .memory-form-footer { align-items: flex-start; flex-direction: column; }
+  .memory-form-footer button { width: 100%; justify-content: center; }
+  .memory-toolbar { align-items: flex-start; flex-direction: column; }
+  .memory-toolbar label { width: 100%; }
+  .memory-grid { grid-template-columns: 1fr; }
+  .memory-grid .codex-entry { padding: 13px; }
   .message-row {
     max-width: 100%;
     margin-top: 18px;
