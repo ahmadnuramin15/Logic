@@ -45,10 +45,12 @@ const knowledgeBase = [
   'Aji, dengan nama lengkap Alamussofiyullah, adalah masinis di instansi KAI (Kereta Api Indonesia) dan alumni Politeknik Negeri Jember (Polije).',
   'Ayu, dengan nama lengkap Ayu Safira Nur, adalah mahasiswa UIN Madura, Program Studi Bimbingan Konseling, Fakultas Ilmu Pendidikan.',
   'Jumat, dengan nama lengkap Jumat S.Pd, adalah alumni Universitas Negeri Malang dan sekarang menjadi ayah dari Ahmad Nur Amin, pencipta Logic.',
-  'Nurul, dengan nama lengkap Drs. Nurul Kojimah, adalah pensiunan PNS dan guru di SMPN 5 Pamekasan, alumni Universitas Muhammadiyah Malang, serta sekarang menjadi ibu dari Ahmad Nur Amin, pencipta Logic.',
+  'Nurul, dengan nama lengkap Drs. Nurul Kojimah, berstatus sebagai pensiunan guru SMPN 5 Pamekasan, serta sekarang menjadi ibu dari pencipta Logic, Ahmad Nur Amin.',
+  'Rahel, dengan nama lengkap Rachel Ananda, adalah mahasiswa Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.',
   'Ahmad Nur Amin biasanya dipanggil Ainur oleh teman-teman dan orang di sekitarnya.'
 ].join('\n');
 const redeemCodePolicy = 'Untuk permintaan kode redeem game: kode bersifat spesifik per game, platform, wilayah, dan waktu. Jangan pernah mengarang atau menyatakan kode masih aktif tanpa sumber yang terverifikasi. Jika basis pengetahuan tidak memiliki kode aktif yang terverifikasi, katakan dengan jelas bahwa kode belum tersedia dan minta nama game serta platformnya. Bedakan kode aktif, kedaluwarsa, dan cara penukaran. Untuk jawaban yang benar-benar terbaru, gunakan sumber resmi game atau layanan data live yang dikonfigurasi server.';
+const imageEditPolicy = 'Untuk edit foto, ikuti instruksi kreatif user selama tidak meminta penipuan, eksploitasi seksual, pelecehan, atau tindakan berbahaya terhadap orang nyata. Jangan mengubah foto menjadi bukti kejadian nyata yang palsu. Jika instruksi melanggar batas tersebut, tolak singkat dan tawarkan edit aman.';
 
 const XP_PER_MESSAGE = 10;
 const XP_PER_LEVEL = 100;
@@ -225,7 +227,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-ID']
 }));
-app.use(express.json({ limit: '32kb' }));
+app.use(express.json({ limit: '12mb' }));
 
 function buildMemoryContext(deviceId) {
   const memories = getMemories(deviceId);
@@ -243,7 +245,7 @@ function demoReply(message, deviceId) {
 
   if (normalized.includes('pencipta') || normalized.includes('pembuat') || normalized.includes('dibuat oleh')) return `${creatorProfile}${memorySummary}`;
   if (normalized.includes('kode redeem') || normalized.includes('redeem code') || normalized.includes('kode game')) return `Aku tidak akan mengarang kode redeem. Kode berbeda menurut game, platform, wilayah, dan masa berlaku. Sebutkan nama game dan platformnya agar bisa dicocokkan dengan kode yang terverifikasi atau sumber resmi.${memorySummary}`;
-  if (['tegar', 'widi', 'andre widiyatmoko', 'galuh', 'hasbi', 'aji', 'alamussofiyullah', 'ayu', 'jumat', 'nurul', 'ainur', 'ahmad nur amin'].some((name) => normalized.includes(name))) return `Berikut informasi yang tersimpan:\n${knowledgeBase}${memorySummary}`;
+  if (['tegar', 'widi', 'andre widiyatmoko', 'galuh', 'hasbi', 'aji', 'alamussofiyullah', 'ayu', 'jumat', 'nurul', 'ainur', 'ahmad nur amin', 'rahel', 'rachel ananda'].some((name) => normalized.includes(name))) return `Berikut informasi yang tersimpan:\n${knowledgeBase}${memorySummary}`;
   if (normalized.includes('halo') || normalized.includes('hai')) return `Halo juga. Aku di sini dan siap mendengarkan dengan tenang. Apa yang ingin kamu mulai hari ini?${memorySummary}`;
   if (normalized.includes('bingung') || normalized.includes('stres')) return `Berhenti sejenak. Kita tidak perlu membesar-besarkan masalah ini. Pisahkan dulu fakta, ketakutan, dan hal yang masih bisa kamu kendalikan. Bagian mana yang paling mendesak?${memorySummary}`;
   return `Aku menangkap masalahnya: “${message}”. Kita bedah tanpa drama: apa faktanya, asumsi apa yang belum terbukti, dan langkah kecil apa yang bisa diuji sekarang?${memorySummary}`;
@@ -260,6 +262,10 @@ function providerConfigured() {
   return Boolean(process.env.AI_API_KEY);
 }
 
+function imageEditBlocked(prompt) {
+  return /seksual|telanjang|bugil|eksploitasi anak|penipuan|palsukan dokumen|bukti palsu|kekerasan terhadap anak/i.test(prompt);
+}
+
 function conversationMessages(message, history = [], deviceId) {
   const safeHistory = Array.isArray(history)
     ? history.filter((item) => (item?.role === 'user' || item?.role === 'assistant') && typeof item.content === 'string')
@@ -270,7 +276,7 @@ function conversationMessages(message, history = [], deviceId) {
   const memoryContext = buildMemoryContext(deviceId);
 
   return [
-    { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}". ${redeemCodePolicy} Basis pengetahuan tentang orang-orang yang relevan:\n${knowledgeBase}\n${memoryContext}` },
+    { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}". ${redeemCodePolicy} ${imageEditPolicy} Basis pengetahuan tentang orang-orang yang relevan:\n${knowledgeBase}\n${memoryContext}` },
     ...safeHistory,
     { role: 'user', content: message }
   ];
@@ -321,6 +327,40 @@ app.delete('/api/memories/:id', (request, response) => {
   const result = database.prepare('DELETE FROM device_memories WHERE id = ? AND device_id = ?').run(id, deviceId);
   if (!result.changes) return response.status(404).json({ error: 'Memory tidak ditemukan.' });
   return response.status(204).end();
+});
+app.post('/api/image-edit', async (request, response) => {
+  const image = typeof request.body?.image === 'string' ? request.body.image : '';
+  const prompt = typeof request.body?.prompt === 'string' ? request.body.prompt.trim() : '';
+  const imageMatch = image.match(/^data:(image\/(?:png|jpeg|webp));base64,([a-zA-Z0-9+/=]+)$/);
+  if (!imageMatch || !prompt) return response.status(400).json({ error: 'Foto dan instruksi edit wajib diisi.' });
+  if (prompt.length > 1000) return response.status(400).json({ error: 'Instruksi edit maksimal 1000 karakter.' });
+  if (image.length > 10 * 1024 * 1024) return response.status(413).json({ error: 'Ukuran foto terlalu besar. Maksimal 10 MB.' });
+  if (imageEditBlocked(prompt)) return response.status(400).json({ error: 'Instruksi ini tidak dapat diproses. Coba gunakan transformasi foto yang aman dan kreatif.' });
+  if (!process.env.AI_IMAGE_API_KEY && !process.env.AI_API_KEY) return response.status(503).json({ error: 'Provider edit foto belum dikonfigurasi di backend.' });
+
+  const [, mimeType, encodedImage] = imageMatch;
+  const form = new FormData();
+  form.append('image', new Blob([Buffer.from(encodedImage, 'base64')], { type: mimeType }), `upload.${mimeType.split('/')[1]}`);
+  form.append('prompt', prompt);
+  form.append('response_format', 'b64_json');
+  try {
+    const providerResponse = await fetch(process.env.AI_IMAGE_API_URL || 'https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.AI_IMAGE_API_KEY || process.env.AI_API_KEY}` },
+      body: form
+    });
+    const data = await providerResponse.json().catch(() => null);
+    if (!providerResponse.ok) {
+      console.error('IMAGE PROVIDER ERROR:', providerResponse.status, data);
+      return response.status(502).json({ error: 'Provider edit foto gagal memproses gambar.' });
+    }
+    const result = data?.data?.[0]?.b64_json;
+    if (!result) return response.status(502).json({ error: 'Provider tidak mengembalikan hasil gambar.' });
+    return response.json({ image: `data:image/png;base64,${result}` });
+  } catch (error) {
+    console.error('Image edit request failed:', error.message);
+    return response.status(502).json({ error: 'Layanan edit foto sedang tidak tersedia.' });
+  }
 });
 app.post('/api/chat', async (request, response) => {
   const deviceId = getDeviceId(request);

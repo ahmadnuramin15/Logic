@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { MessageCircle, Send, Settings2, Shield, Sword, Trophy, BookOpen, Plus, Search, Trash2, Sparkles } from 'lucide-react';
+import { MessageCircle, Send, Settings2, Shield, Sword, Trophy, BookOpen, Plus, Search, Trash2, Sparkles, ImagePlus, Download } from 'lucide-react';
 import './styles.css';
 
 function createStarterMessages() {
@@ -59,6 +59,11 @@ function App() {
   const [progression, setProgression] = React.useState({ xp: 0, level: 1, rank: 'Pemula', currentLevelXp: 0, nextLevelXp: 100, xpPerMessage: 10, stats: { totalMessages: 0 } });
   const [quests, setQuests] = React.useState([]);
   const [achievements, setAchievements] = React.useState([]);
+  const [editImage, setEditImage] = React.useState('');
+  const [editPrompt, setEditPrompt] = React.useState('');
+  const [editedImage, setEditedImage] = React.useState('');
+  const [editLoading, setEditLoading] = React.useState(false);
+  const [editError, setEditError] = React.useState('');
 
   const API_BASE = 'https://vein-flashy-dog.abasthan.app';
   const DEVICE_ID = React.useMemo(getDeviceId, []);
@@ -198,6 +203,43 @@ function App() {
     }
   }
 
+  function selectEditImage(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setEditError('Pilih file gambar yang valid.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setEditError('Ukuran foto maksimal 10 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => { setEditImage(String(reader.result)); setEditedImage(''); setEditError(''); };
+    reader.readAsDataURL(file);
+  }
+
+  async function editPhoto(event) {
+    event.preventDefault();
+    if (!editImage || !editPrompt.trim() || editLoading) return;
+    setEditLoading(true);
+    setEditError('');
+    try {
+      const response = await fetch(apiUrl('/api/image-edit'), requestOptions({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: editImage, prompt: editPrompt.trim() })
+      }));
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || 'Edit foto gagal.');
+      setEditedImage(data.image);
+    } catch (requestError) {
+      setEditError(requestError.message);
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -211,13 +253,15 @@ function App() {
         <button className="new-chat" onClick={() => setMessages(createStarterMessages())}><Plus size={16} /> Percakapan baru</button>
         <div className="side-label">MENU</div>
         <button className={`side-item${activeView === 'chat' ? ' active' : ''}`} onClick={() => setActiveView('chat')}><MessageCircle size={16} /> Ruang utama</button>
+        <button className={`side-item${activeView === 'studio' ? ' active' : ''}`} onClick={() => setActiveView('studio')}><ImagePlus size={16} /> Studio foto AI</button>
         <button className={`side-item${activeView === 'memory' ? ' active' : ''}`} onClick={() => setActiveView('memory')}><BookOpen size={16} /> Codex memory</button>
         <button className={`side-item${activeView === 'achievements' ? ' active' : ''}`} onClick={() => setActiveView('achievements')}><Trophy size={16} /> Achievements</button>
         <div className="sidebar-bottom"><div className="status-dot" /> ONLINE <Settings2 size={15} /></div>
       </aside>
 
       <section className="conversation">
-        <header className="topbar"><div><span className="eyebrow">CHAPTER 01 / {activeView === 'chat' ? 'RUANG UTAMA' : activeView === 'memory' ? 'CODEX MEMORY' : 'ACHIEVEMENTS'}</span><h1>{activeView === 'chat' ? 'Teman berpikir yang hadir.' : activeView === 'memory' ? 'Catatan yang kamu pilih untuk diingat.' : 'Jejak perjalananmu.'}</h1><p className="topbar-subtitle">{activeView === 'chat' ? (personality ? `${personality.name} · fakta di atas drama.` : 'Satu pikiran pada satu waktu.') : activeView === 'memory' ? 'Memory hanya tersimpan atas izinmu.' : 'Setiap langkah kecil tetap berarti.'}</p><div className="level-pill">LEVEL {progression.level || 1} · {progression.rank || 'Pemula'}</div></div><div className="online-status"><span /> SERVER ONLINE</div></header>
+        {activeView === 'studio' && <div className="studio-overlay"><div className="studio-panel"><div className="panel-heading"><ImagePlus size={21} /><span>STUDIO FOTO AI</span></div><p className="panel-intro">Pilih foto dan jelaskan perubahan yang kamu inginkan dengan bahasa biasa.</p><form className="studio-form" onSubmit={editPhoto}><label className="upload-zone">{editImage ? <img src={editImage} alt="Foto yang dipilih" /> : <><ImagePlus size={30} /><span>Pilih foto</span><small>PNG, JPG, atau WEBP · maksimal 10 MB</small></>}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectEditImage} /></label><label className="studio-prompt"><span>Instruksi edit</span><textarea value={editPrompt} onChange={(event) => setEditPrompt(event.target.value)} maxLength="1000" rows="4" placeholder="Contoh: ubah latar menjadi taman saat matahari terbenam, pertahankan wajah dan pencahayaan alami." /></label><button className="studio-submit" type="submit" disabled={!editImage || !editPrompt.trim() || editLoading}><Sparkles size={16} /> {editLoading ? 'Memproses foto...' : 'Edit foto'}</button></form>{editError && <div className="error-note">{editError}</div>}{editedImage && <div className="studio-result"><div className="panel-heading"><Sparkles size={18} /><span>HASIL EDIT</span></div><img src={editedImage} alt="Hasil edit foto" /><a className="studio-download" href={editedImage} download="logic-edit.png"><Download size={16} /> Unduh hasil</a></div>}</div></div>}
+        <header className="topbar"><div><span className="eyebrow">CHAPTER 01 / {activeView === 'chat' ? 'RUANG UTAMA' : activeView === 'studio' ? 'STUDIO FOTO AI' : activeView === 'memory' ? 'CODEX MEMORY' : 'ACHIEVEMENTS'}</span><h1>{activeView === 'chat' ? 'Teman berpikir yang hadir.' : activeView === 'studio' ? 'Ubah foto menjadi kemungkinan baru.' : activeView === 'memory' ? 'Catatan yang kamu pilih untuk diingat.' : 'Jejak perjalananmu.'}</h1><p className="topbar-subtitle">{activeView === 'chat' ? (personality ? `${personality.name} · fakta di atas drama.` : 'Satu pikiran pada satu waktu.') : activeView === 'studio' ? 'Unggah foto, tulis hasil yang kamu bayangkan, lalu biarkan AI mengerjakannya.' : activeView === 'memory' ? 'Memory hanya tersimpan atas izinmu.' : 'Setiap langkah kecil tetap berarti.'}</p><div className="level-pill">LEVEL {progression.level || 1} · {progression.rank || 'Pemula'}</div></div><div className="online-status"><span /> SERVER ONLINE</div></header>
         {activeView === 'chat' ? <div className="message-list">
           <div className="welcome"><div className="welcome-icon"><BrainMark size={21} /></div><div><span className="quest-label">NEW ADVENTURE</span><strong>Selamat datang di Logic</strong><p>Mulai dari satu kalimat. Kita ubah menjadi langkah yang terasa mungkin.</p></div></div>
           <div className="quest-banner"><div><span className="quest-label">ACTIVE QUEST · {activeQuestNumber || 1} / {quests.length || 1000}</span><strong>{activeQuest?.title || 'Mulai tiga percakapan'}</strong><p>{activeQuest?.description || 'Buka ruang pikirmu lewat tiga pesan.'}</p></div><div className="quest-count">{String(activeQuest?.progress || 0).padStart(2, '0')}<small> / {String(activeQuest?.goal || 3).padStart(2, '0')}</small><span>{activeQuest?.completed ? 'COMPLETED' : 'IN PROGRESS'}</span></div></div>
