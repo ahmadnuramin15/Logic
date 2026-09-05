@@ -263,6 +263,26 @@ button, textarea { font: inherit; }
 .memory-entry-body small { display: block; margin-top: 9px; color: #7784aa; font-size: 10px; }
 .memory-delete { display: grid; flex: 0 0 auto; place-items: center; width: 29px; height: 29px; border: 1px solid rgba(238, 132, 159, 0.28); border-radius: 7px; background: transparent; color: #eaa0b5; cursor: pointer; }
 .memory-delete:hover { border-color: #eaa0b5; background: rgba(238, 132, 159, 0.1); }
+.achievement-panel { max-width: 920px; margin: 0 auto; }
+.achievement-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.achievement-total { display: flex; flex-direction: column; align-items: flex-end; padding: 10px 14px; border: 1px solid rgba(131, 213, 165, 0.24); border-radius: 12px; background: rgba(131, 213, 165, 0.06); }
+.achievement-total strong { color: #83d5a5; font: 700 24px 'Rajdhani'; }
+.achievement-total span { color: #8290af; font: 700 9px 'Rajdhani'; letter-spacing: .1em; }
+.achievement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.achievement-card { min-width: 0; padding: 16px; border: 1px solid rgba(142, 165, 233, 0.14); border-radius: 15px; background: linear-gradient(145deg, rgba(27, 36, 65, 0.82), rgba(17, 24, 44, 0.9)); opacity: .72; }
+.achievement-card.unlocked { border-color: rgba(131, 213, 165, 0.36); background: linear-gradient(145deg, rgba(28, 57, 62, 0.78), rgba(18, 32, 45, 0.9)); opacity: 1; }
+.achievement-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.achievement-icon { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(246, 217, 135, 0.25); border-radius: 10px; color: #f6d987; background: rgba(246, 217, 135, 0.08); }
+.achievement-card.unlocked .achievement-icon { border-color: rgba(131, 213, 165, 0.35); color: #83d5a5; background: rgba(131, 213, 165, 0.1); }
+.achievement-status { color: #7885a7; font: 700 9px 'Rajdhani'; letter-spacing: .12em; }
+.achievement-card.unlocked .achievement-status { color: #83d5a5; }
+.achievement-card > strong { display: block; color: #f2efff; font: 600 17px 'Rajdhani'; }
+.achievement-card > p { min-height: 36px; margin: 5px 0 17px; color: #929dc0; font-size: 12px; line-height: 1.5; }
+.achievement-progress > div { display: flex; justify-content: space-between; margin-bottom: 7px; color: #7d89ad; font: 600 10px 'Rajdhani'; letter-spacing: .06em; }
+.achievement-progress b { color: #f6d987; font-weight: 600; }
+.achievement-progress i { display: block; height: 5px; overflow: hidden; border-radius: 10px; background: #293151; }
+.achievement-progress em { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8b6de8, #b698ff); }
+.achievement-card.unlocked .achievement-progress em { background: linear-gradient(90deg, #5dbd90, #9be1b7); }
 .achievement-row strong { color: #f2efff; font: 600 16px 'Rajdhani'; }
 .achievement-row p { margin-top: 4px; color: #8994b8; font-size: 12px; }
 .achievement-row b { color: #83d5a5; font: 600 9px 'Rajdhani'; letter-spacing: .12em; }
@@ -433,6 +453,12 @@ button, textarea { font: inherit; }
   .memory-toolbar label { width: 100%; }
   .memory-grid { grid-template-columns: 1fr; }
   .memory-grid .codex-entry { padding: 13px; }
+  .achievement-heading { gap: 12px; }
+  .achievement-total { padding: 8px 10px; }
+  .achievement-total strong { font-size: 20px; }
+  .achievement-total span { font-size: 8px; }
+  .achievement-grid { grid-template-columns: 1fr; gap: 10px; }
+  .achievement-card { padding: 14px; }
   .message-row {
     max-width: 100%;
     margin-top: 18px;
