@@ -12,8 +12,8 @@ database.exec(`CREATE TABLE IF NOT EXISTS progression (id INTEGER PRIMARY KEY CH
 database.prepare('INSERT OR IGNORE INTO progression (id, xp) VALUES (1, 0)').run();
 database.exec(`CREATE TABLE IF NOT EXISTS quests (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, goal INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, reward_xp INTEGER NOT NULL, completed INTEGER NOT NULL DEFAULT 0)`);
 database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)').run('first-steps', 'Mulai tiga percakapan', 'Buka ruang pikirmu lewat tiga pesan.', 3, 30);
+database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)').run('deep-thinker', 'Tetap fokus dalam lima percakapan', 'Buat lima percakapan dengan tujuan yang jelas dan konsisten.', 5, 40);
 database.exec(`CREATE TABLE IF NOT EXISTS achievements (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, goal INTEGER NOT NULL, progress INTEGER NOT NULL DEFAULT 0, reward_xp INTEGER NOT NULL, unlocked INTEGER NOT NULL DEFAULT 0)`);
-database.prepare('INSERT OR IGNORE INTO achievements (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)').run('active-listener', 'Pendengar aktif', 'Hadir dalam lima percakapan.', 5, 50);
 database.exec(`CREATE TABLE IF NOT EXISTS memories (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
 
 const personality = {
@@ -34,6 +34,72 @@ const creatorProfile = 'Logic diciptakan oleh Ahmad Nur Amin, mahasiswa Universi
 
 const XP_PER_MESSAGE = 10;
 const XP_PER_LEVEL = 100;
+const achievementSeries = [
+  ['dialogue', 'Percakapan', 'Bangun percakapan bermakna', 'messages'],
+  ['memory', 'Kurator memory', 'Perkaya Codex Memory', 'memories'],
+  ['quest', 'Pemburu misi', 'Tuntaskan quest', 'completedQuests'],
+  ['longform', 'Penulis mendalam', 'Kirim pesan dengan konteks yang lengkap', 'longMessages'],
+  ['question', 'Penyelidik', 'Ajukan pertanyaan untuk menguji ide', 'questionMessages'],
+  ['explorer', 'Penjelajah topik', 'Eksplorasi topik baru bersama Logic', 'topicMessages'],
+  ['level', 'Pendaki level', 'Naik level dalam perjalananmu', 'level']
+];
+const achievementDefinitions = [
+  ['first-signal', 'Sinyal pertama', 'Kirim pesan pertamamu ke Logic.', 1, 20],
+  ['active-listener', 'Pendengar aktif', 'Hadir dalam lima percakapan.', 5, 50],
+  ['curious-mind', 'Pikiran ingin tahu', 'Bangun sepuluh percakapan bersama Logic.', 10, 75],
+  ['deep-thinker', 'Pemikir mendalam', 'Capai dua puluh lima pesan untuk membedah ide.', 25, 100],
+  ['steady-progress', 'Langkah konsisten', 'Terus hadir sampai lima puluh pesan.', 50, 150],
+  ['century-mind', 'Seratus pikiran', 'Kumpulkan seratus pesan dalam perjalananmu.', 100, 300],
+  ['memory-keeper', 'Penjaga ingatan', 'Simpan satu catatan penting di Codex Memory.', 1, 40],
+  ['memory-architect', 'Arsitek pengetahuan', 'Simpan lima catatan untuk memperkaya Logic.', 5, 100],
+  ['quest-beginner', 'Pembuka misi', 'Selesaikan quest pertamamu.', 1, 60],
+  ['quest-master', 'Penakluk quest', 'Selesaikan dua quest dalam perjalananmu.', 2, 120],
+  ...Array.from({ length: 90 }, (_, index) => {
+    const [prefix, label, action, metric] = achievementSeries[index % achievementSeries.length];
+    const tier = Math.floor(index / achievementSeries.length) + 1;
+    const goal = metric === 'level' ? tier + 1 : tier * 2 + 2;
+    return [`${prefix}-${tier}`, `${label} ${tier}`, `${action} sampai target ${goal}.`, goal, 50 + (tier % 6) * 25];
+  })
+];
+const questThemes = [
+  ['Fokus', 'Jaga satu tujuan tetap jelas dalam percakapan.', 'Tuntaskan'],
+  ['Eksplorasi', 'Buka sudut pandang baru dari masalah yang sedang dipikirkan.', 'Temukan'],
+  ['Refleksi', 'Urai fakta, asumsi, dan langkah berikutnya dengan tenang.', 'Renungkan'],
+  ['Eksperimen', 'Ubah satu ide menjadi tindakan kecil yang bisa diuji.', 'Ujikan'],
+  ['Kejelasan', 'Rapikan pikiran sampai keputusan terasa lebih terukur.', 'Jernihkan'],
+  ['Strategi', 'Susun pilihan, risiko, dan langkah yang paling masuk akal.', 'Rancang'],
+  ['Belajar', 'Ambil satu konsep baru dan hubungkan dengan praktik.', 'Pelajari'],
+  ['Kreativitas', 'Kembangkan ide awal menjadi kemungkinan yang lebih berani.', 'Ciptakan'],
+  ['Kebiasaan', 'Bangun ritme kecil yang bisa kamu ulangi dengan konsisten.', 'Bangun'],
+  ['Keputusan', 'Bandingkan pilihan sebelum mengambil langkah berikutnya.', 'Putuskan'],
+  ['Pemecahan', 'Pecah masalah besar menjadi bagian yang bisa dikerjakan.', 'Pecahkan'],
+  ['Komunikasi', 'Latih cara menyampaikan pikiran dengan lebih efektif.', 'Sampaikan']
+];
+const questDefinitions = Array.from({ length: 998 }, (_, index) => {
+  const number = index + 3;
+  const [theme, description, verb] = questThemes[index % questThemes.length];
+  const goal = 2 + (index % 9);
+  return [`quest-${String(number).padStart(4, '0')}`, `${verb} ${theme} ${number}`, `${description} Selesaikan ${goal} percakapan untuk menuntaskan misi ini.`, goal, 20 + (index % 5) * 10];
+});
+
+function ensureDefaultData() {
+  database.prepare('INSERT OR IGNORE INTO progression (id, xp) VALUES (1, 0)').run();
+  database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)')
+    .run('first-steps', 'Mulai tiga percakapan', 'Buka ruang pikirmu lewat tiga pesan.', 3, 30);
+  database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)')
+    .run('deep-thinker', 'Tetap fokus dalam lima percakapan', 'Buat lima percakapan dengan tujuan yang jelas dan konsisten.', 5, 40);
+  const insertQuest = database.prepare('INSERT OR IGNORE INTO quests (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)');
+  const updateQuest = database.prepare('UPDATE quests SET title = ?, description = ?, goal = ?, reward_xp = ? WHERE id = ?');
+  for (const quest of questDefinitions) {
+    insertQuest.run(...quest);
+    updateQuest.run(quest[1], quest[2], quest[3], quest[4], quest[0]);
+  }
+  database.prepare("DELETE FROM achievements WHERE id LIKE 'conversation-%'").run();
+  const insertAchievement = database.prepare('INSERT OR IGNORE INTO achievements (id, title, description, goal, reward_xp) VALUES (?, ?, ?, ?, ?)');
+  for (const achievement of achievementDefinitions) insertAchievement.run(...achievement);
+}
+
+ensureDefaultData();
 
 function getProgression() {
   const xp = database.prepare('SELECT xp FROM progression WHERE id = 1').get().xp;
@@ -48,11 +114,54 @@ function getProgression() {
 }
 
 function getQuests() {
-  return database.prepare('SELECT id, title, description, goal, progress, reward_xp AS rewardXp, completed FROM quests ORDER BY id').all()
+  return database.prepare('SELECT id, title, description, goal, progress, reward_xp AS rewardXp, completed FROM quests ORDER BY completed ASC, goal ASC, id ASC').all()
     .map((quest) => ({ ...quest, completed: Boolean(quest.completed) }));
 }
 
+function getAchievementSeriesMetric(id, metrics, fallback) {
+  const prefix = id.split('-')[0];
+  const series = achievementSeries.find((item) => item[0] === prefix);
+  return series ? metrics[series[3]] : fallback;
+}
+
+function syncAchievements() {
+  const userMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user'").get().count;
+  const savedMemories = database.prepare('SELECT COUNT(*) AS count FROM memories').get().count;
+  const completedQuests = database.prepare('SELECT COUNT(*) AS count FROM quests WHERE completed = 1').get().count;
+  const longMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND length(content) >= 120").get().count;
+  const questionMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND content LIKE '%?%'").get().count;
+  const topicMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND (lower(content) LIKE '%ai%' OR lower(content) LIKE '%belajar%' OR lower(content) LIKE '%proyek%' OR lower(content) LIKE '%rencana%')").get().count;
+  const level = Math.floor(database.prepare('SELECT xp FROM progression WHERE id = 1').get().xp / XP_PER_LEVEL) + 1;
+  const metrics = {
+    messages: userMessages,
+    memories: savedMemories,
+    'first-signal': userMessages,
+    'active-listener': userMessages,
+    'curious-mind': userMessages,
+    'deep-thinker': userMessages,
+    'steady-progress': userMessages,
+    'century-mind': userMessages,
+    'memory-keeper': savedMemories,
+    'memory-architect': savedMemories,
+    'quest-beginner': completedQuests,
+    'quest-master': completedQuests,
+    longMessages,
+    questionMessages,
+    topicMessages,
+    level
+  };
+  const achievements = database.prepare('SELECT id, progress, goal, unlocked, reward_xp AS rewardXp FROM achievements').all();
+  for (const achievement of achievements) {
+    const metric = metrics[achievement.id] ?? getAchievementSeriesMetric(achievement.id, metrics, achievement.progress);
+    const progress = Math.min(Number.isFinite(Number(metric)) ? Number(metric) : 0, achievement.goal);
+    const unlocked = progress >= achievement.goal ? 1 : 0;
+    database.prepare('UPDATE achievements SET progress = ?, unlocked = ? WHERE id = ?').run(progress, unlocked, achievement.id);
+    if (unlocked && !achievement.unlocked) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(achievement.rewardXp);
+  }
+}
+
 function getSkills() {
+  syncAchievements();
   const achievements = database.prepare('SELECT id, title, description, goal, progress, reward_xp AS rewardXp, unlocked FROM achievements ORDER BY id').all()
     .map((achievement) => ({ ...achievement, unlocked: Boolean(achievement.unlocked) }));
   return { active: [{ id: 'reflective-thinking', name: 'Berpikir reflektif', description: 'Mengurai masalah menjadi langkah yang realistis.' }], achievements };
@@ -72,12 +181,24 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '32kb' }));
 
+function buildMemoryContext() {
+  const memories = getMemories();
+  return memories.length
+    ? `Memory yang secara sadar disimpan user. Gunakan hanya jika relevan dan jangan menganggapnya selalu benar: ${memories.map((memory) => `- ${memory.content}`).join('\n')}`
+    : 'Belum ada memory user yang disimpan.';
+}
+
 function demoReply(message) {
   const normalized = message.toLowerCase();
-  if (normalized.includes('pencipta') || normalized.includes('pembuat') || normalized.includes('dibuat oleh')) return creatorProfile;
-  if (normalized.includes('halo') || normalized.includes('hai')) return 'Halo juga. Aku di sini dan siap mendengarkan dengan tenang. Apa yang ingin kamu mulai hari ini?';
-  if (normalized.includes('bingung') || normalized.includes('stres')) return 'Berhenti sejenak. Kita tidak perlu membesar-besarkan masalah ini. Pisahkan dulu fakta, ketakutan, dan hal yang masih bisa kamu kendalikan. Bagian mana yang paling mendesak?';
-  return `Aku menangkap masalahnya: “${message}”. Kita bedah tanpa drama: apa faktanya, asumsi apa yang belum terbukti, dan langkah kecil apa yang bisa diuji sekarang?`;
+  const memories = getMemories();
+  const memorySummary = memories.length
+    ? `\n\nCatatan yang saya ingat dari memory: ${memories.slice(0, 3).map((memory) => memory.content).join('; ')}`
+    : '';
+
+  if (normalized.includes('pencipta') || normalized.includes('pembuat') || normalized.includes('dibuat oleh')) return `${creatorProfile}${memorySummary}`;
+  if (normalized.includes('halo') || normalized.includes('hai')) return `Halo juga. Aku di sini dan siap mendengarkan dengan tenang. Apa yang ingin kamu mulai hari ini?${memorySummary}`;
+  if (normalized.includes('bingung') || normalized.includes('stres')) return `Berhenti sejenak. Kita tidak perlu membesar-besarkan masalah ini. Pisahkan dulu fakta, ketakutan, dan hal yang masih bisa kamu kendalikan. Bagian mana yang paling mendesak?${memorySummary}`;
+  return `Aku menangkap masalahnya: “${message}”. Kita bedah tanpa drama: apa faktanya, asumsi apa yang belum terbukti, dan langkah kecil apa yang bisa diuji sekarang?${memorySummary}`;
 }
 
 function emotionForMessage(message) {
@@ -98,10 +219,7 @@ function conversationMessages(message, history = []) {
       .map((item) => ({ role: item.role, content: item.content.slice(0, 4000) }))
     : [];
 
-  const memories = getMemories();
-  const memoryContext = memories.length
-    ? `Memory yang secara sadar disimpan user. Gunakan hanya jika relevan dan jangan menganggapnya selalu benar: ${memories.map((memory) => `- ${memory.content}`).join('\n')}`
-    : 'Belum ada memory user yang disimpan.';
+  const memoryContext = buildMemoryContext();
 
   return [
     { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}" ${memoryContext}` },
@@ -117,7 +235,7 @@ async function providerReply(message, history) {
     const response = await fetch(process.env.AI_API_URL || 'https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.AI_MODEL || 'gpt-4o-mini', messages: conversationMessages(message, history), temperature: 0.45 }),
+      body: JSON.stringify({ model: process.env.AI_MODEL || 'openai/gpt-oss-120b', messages: conversationMessages(message, history), temperature: 0.45 }),
       signal: controller.signal
     });
     if (!response.ok) {
@@ -175,23 +293,51 @@ app.post('/api/chat', async (request, response) => {
   const updateProgress = database.transaction(() => {
     database.prepare('INSERT INTO messages (role, content) VALUES (?, ?)').run('assistant', reply);
     database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(XP_PER_MESSAGE);
-    const quest = database.prepare('SELECT progress, goal, completed, reward_xp FROM quests WHERE id = ?').get('first-steps');
-    if (quest && !quest.completed) {
+
+    const quest = database.prepare('SELECT id, progress, goal, completed, reward_xp AS rewardXp FROM quests WHERE completed = 0 ORDER BY goal ASC, id ASC LIMIT 1').get();
+    if (quest) {
       const progress = Math.min(quest.progress + 1, quest.goal);
       const completed = progress >= quest.goal ? 1 : 0;
-      database.prepare('UPDATE quests SET progress = ?, completed = ? WHERE id = ?').run(progress, completed, 'first-steps');
-      if (completed) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(quest.reward_xp);
+      database.prepare('UPDATE quests SET progress = ?, completed = ? WHERE id = ?').run(progress, completed, quest.id);
+      if (completed) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(quest.rewardXp);
     }
-    const achievement = database.prepare('SELECT progress, goal, unlocked, reward_xp FROM achievements WHERE id = ?').get('active-listener');
-    if (achievement && !achievement.unlocked) {
-      const progress = Math.min(achievement.progress + 1, achievement.goal);
+
+    const userMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user'").get().count;
+    const savedMemories = database.prepare('SELECT COUNT(*) AS count FROM memories').get().count;
+    const completedQuests = database.prepare('SELECT COUNT(*) AS count FROM quests WHERE completed = 1').get().count;
+    const longMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND length(content) >= 120").get().count;
+    const questionMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND content LIKE '%?%'").get().count;
+    const topicMessages = database.prepare("SELECT COUNT(*) AS count FROM messages WHERE role = 'user' AND (lower(content) LIKE '%ai%' OR lower(content) LIKE '%belajar%' OR lower(content) LIKE '%proyek%' OR lower(content) LIKE '%rencana%')").get().count;
+    const level = Math.floor(database.prepare('SELECT xp FROM progression WHERE id = 1').get().xp / XP_PER_LEVEL) + 1;
+    const metrics = {
+      messages: userMessages,
+      memories: savedMemories,
+      'first-signal': userMessages,
+      'active-listener': userMessages,
+      'curious-mind': userMessages,
+      'deep-thinker': userMessages,
+      'steady-progress': userMessages,
+      'century-mind': userMessages,
+      'memory-keeper': savedMemories,
+      'memory-architect': savedMemories,
+      'quest-beginner': completedQuests,
+      'quest-master': completedQuests,
+      longMessages,
+      questionMessages,
+      topicMessages,
+      level
+    };
+    const achievements = database.prepare('SELECT id, progress, goal, unlocked, reward_xp AS rewardXp FROM achievements').all();
+    for (const achievement of achievements) {
+      const metric = metrics[achievement.id] ?? getAchievementSeriesMetric(achievement.id, metrics, achievement.progress);
+      const progress = Math.min(Number.isFinite(Number(metric)) ? Number(metric) : 0, achievement.goal);
       const unlocked = progress >= achievement.goal ? 1 : 0;
-      database.prepare('UPDATE achievements SET progress = ?, unlocked = ? WHERE id = ?').run(progress, unlocked, 'active-listener');
-      if (unlocked) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(achievement.reward_xp);
+      database.prepare('UPDATE achievements SET progress = ?, unlocked = ? WHERE id = ?').run(progress, unlocked, achievement.id);
+      if (unlocked && !achievement.unlocked) database.prepare('UPDATE progression SET xp = xp + ? WHERE id = 1').run(achievement.rewardXp);
     }
   });
   updateProgress();
-  return response.json({ reply, mode, emotion, progression: getProgression(), quests: getQuests(), skills: getSkills() });
+  return response.json({ reply, mode, emotion, memories: getMemories(), progression: getProgression(), quests: getQuests(), skills: getSkills() });
 });
 const PORT = process.env.PORT || 3001;
 
