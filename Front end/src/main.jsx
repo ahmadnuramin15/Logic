@@ -21,6 +21,11 @@ function formatMemoryDate(value) {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
+function achievementCategory(id) {
+  const categories = { dialogue: 'Percakapan', memory: 'Memory', quest: 'Quest', longform: 'Refleksi panjang', question: 'Rasa ingin tahu', explorer: 'Eksplorasi', level: 'Level' };
+  return categories[id.split('-')[0]] || 'Perjalanan';
+}
+
 function App() {
   const [messages, setMessages] = React.useState(starterMessages);
   const [input, setInput] = React.useState('');
