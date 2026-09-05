@@ -168,7 +168,7 @@ function App() {
         method: 'POST',
         body: JSON.stringify({ content })
       }));
-
+""
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(data?.error || 'Gagal menyimpan memory.');
