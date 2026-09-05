@@ -9,7 +9,6 @@ const starterMessages = [
   { role: 'assistant', content: 'Halo, aku Logic. Aku siap membantu kamu berpikir lebih jernih hari ini.' },
   { role: 'assistant', content: 'Ceritakan apa yang sedang ada di pikiranmu. Kita urai pelan-pelan.' }
 ];
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function BrainMark({ size = 18 }) {
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 4.5A3 3 0 0 0 6 7.3a3.2 3.2 0 0 0-1 5.8A3 3 0 0 0 7 18.5a3 3 0 0 0 4 1.2V6.5a3 3 0 0 0-1.5-2Z" /><path d="M14.5 4.5A3 3 0 0 1 18 7.3a3.2 3.2 0 0 1 1 5.8 3 3 0 0 1-2 5.4 3 3 0 0 1-4 1.2V6.5a3 3 0 0 1 1.5-2Z" /><path d="M7.5 9.5h2M7 14h2.5M14.5 9.5h2M14.5 14H17M12 6.5v13" /></svg>;
