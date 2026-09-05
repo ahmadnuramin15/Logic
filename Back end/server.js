@@ -114,13 +114,17 @@ async function providerReply(message, history) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
   try {
-    const response = await fetch(process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(process.env.AI_API_URL || 'https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.AI_API_KEY}` },
       body: JSON.stringify({ model: process.env.AI_MODEL || 'gpt-4o-mini', messages: conversationMessages(message, history), temperature: 0.45 }),
       signal: controller.signal
     });
-    if (!response.ok) throw new Error(`Provider returned ${response.status}`);
+    if (!response.ok) {
+  const errorText = await response.text();
+  console.error('GROQ ERROR:', response.status, errorText);
+  throw new Error(`Provider returned ${response.status}: ${errorText}`);
+}
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content;
     if (typeof reply !== 'string' || !reply.trim()) throw new Error('Provider returned an empty response');
