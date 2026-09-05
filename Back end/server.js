@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import Database from 'better-sqlite3';
 
+
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const database = new Database(process.env.DATABASE_PATH || 'penter.db');
