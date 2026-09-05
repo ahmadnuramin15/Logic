@@ -62,7 +62,14 @@ function getMemories() {
   return database.prepare('SELECT id, content, created_at AS createdAt FROM memories ORDER BY id DESC').all();
 }
 
-app.use(cors({ origin: 'https://ahmadnuramin15.github.io' }));
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://ahmadnuramin15.github.io'
+  ],
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '32kb' }));
 
 function demoReply(message) {
