@@ -36,7 +36,19 @@ const personality = {
   ]
 };
 
-const creatorProfile = 'Logic diciptakan oleh Ahmad Nur Amin, mahasiswa Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.';
+const creatorProfile = 'Logic diciptakan oleh Ahmad Nur Amin, yang biasanya dipanggil Ainur oleh teman-teman dan orang di sekitarnya, mahasiswa Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.';
+const knowledgeBase = [
+  'Tegar, dengan nama lengkap R. Kharisma Tegar Kusuma Wardana, adalah mahasiswa UIN Madura, Program Studi Hukum Ekonomi Islam, Fakultas Hukum.',
+  'Widi, dengan nama lengkap Andre Widiyatmoko, adalah mahasiswa Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.',
+  'Galuh, dengan nama lengkap Farras Galuh Pratama, adalah mahasiswa Universitas Trunojoyo Madura, Program Studi Teknik Informatika, Fakultas Teknik.',
+  'Hasbi memiliki nama lengkap Moh. Hasbi Nuralief Sholeh. Tidak ada informasi lain yang tersimpan tentang Hasbi.',
+  'Aji, dengan nama lengkap Alamussofiyullah, adalah masinis di instansi KAI (Kereta Api Indonesia) dan alumni Politeknik Negeri Jember (Polije).',
+  'Ayu, dengan nama lengkap Ayu Safira Nur, adalah mahasiswa UIN Madura, Program Studi Bimbingan Konseling, Fakultas Ilmu Pendidikan.',
+  'Jumat, dengan nama lengkap Jumat S.Pd, adalah alumni Universitas Negeri Malang dan sekarang menjadi ayah dari Ahmad Nur Amin, pencipta Logic.',
+  'Nurul, dengan nama lengkap Drs. Nurul Kojimah, adalah pensiunan PNS dan guru di SMPN 5 Pamekasan, alumni Universitas Muhammadiyah Malang, serta sekarang menjadi ibu dari Ahmad Nur Amin, pencipta Logic.',
+  'Ahmad Nur Amin biasanya dipanggil Ainur oleh teman-teman dan orang di sekitarnya.'
+].join('\n');
+const redeemCodePolicy = 'Untuk permintaan kode redeem game: kode bersifat spesifik per game, platform, wilayah, dan waktu. Jangan pernah mengarang atau menyatakan kode masih aktif tanpa sumber yang terverifikasi. Jika basis pengetahuan tidak memiliki kode aktif yang terverifikasi, katakan dengan jelas bahwa kode belum tersedia dan minta nama game serta platformnya. Bedakan kode aktif, kedaluwarsa, dan cara penukaran. Untuk jawaban yang benar-benar terbaru, gunakan sumber resmi game atau layanan data live yang dikonfigurasi server.';
 
 const XP_PER_MESSAGE = 10;
 const XP_PER_LEVEL = 100;
@@ -230,6 +242,8 @@ function demoReply(message, deviceId) {
     : '';
 
   if (normalized.includes('pencipta') || normalized.includes('pembuat') || normalized.includes('dibuat oleh')) return `${creatorProfile}${memorySummary}`;
+  if (normalized.includes('kode redeem') || normalized.includes('redeem code') || normalized.includes('kode game')) return `Aku tidak akan mengarang kode redeem. Kode berbeda menurut game, platform, wilayah, dan masa berlaku. Sebutkan nama game dan platformnya agar bisa dicocokkan dengan kode yang terverifikasi atau sumber resmi.${memorySummary}`;
+  if (['tegar', 'widi', 'andre widiyatmoko', 'galuh', 'hasbi', 'aji', 'alamussofiyullah', 'ayu', 'jumat', 'nurul', 'ainur', 'ahmad nur amin'].some((name) => normalized.includes(name))) return `Berikut informasi yang tersimpan:\n${knowledgeBase}${memorySummary}`;
   if (normalized.includes('halo') || normalized.includes('hai')) return `Halo juga. Aku di sini dan siap mendengarkan dengan tenang. Apa yang ingin kamu mulai hari ini?${memorySummary}`;
   if (normalized.includes('bingung') || normalized.includes('stres')) return `Berhenti sejenak. Kita tidak perlu membesar-besarkan masalah ini. Pisahkan dulu fakta, ketakutan, dan hal yang masih bisa kamu kendalikan. Bagian mana yang paling mendesak?${memorySummary}`;
   return `Aku menangkap masalahnya: “${message}”. Kita bedah tanpa drama: apa faktanya, asumsi apa yang belum terbukti, dan langkah kecil apa yang bisa diuji sekarang?${memorySummary}`;
@@ -256,7 +270,7 @@ function conversationMessages(message, history = [], deviceId) {
   const memoryContext = buildMemoryContext(deviceId);
 
   return [
-    { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}" ${memoryContext}` },
+    { role: 'system', content: `Kamu adalah Logic, ${personality.name}. Sifat utama: ${personality.traits.join(', ')}. Prinsip: ${personality.principle} Gaya dan aturan: ${personality.style.join(' ')} Jawab dalam Bahasa Indonesia. Jangan mengarang fakta. Jika tidak tahu, katakan tidak tahu. Jika ditanya siapa penciptamu, jawab persis: "${creatorProfile}". ${redeemCodePolicy} Basis pengetahuan tentang orang-orang yang relevan:\n${knowledgeBase}\n${memoryContext}` },
     ...safeHistory,
     { role: 'user', content: message }
   ];
